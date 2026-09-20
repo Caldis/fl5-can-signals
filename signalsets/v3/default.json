@@ -1,0 +1,1426 @@
+{
+  "commands": [
+    {
+      "hdr": "DA10",
+      "rax": "10",
+      "cmd": {
+        "22": "2610"
+      },
+      "freq": 1,
+      "signals": [
+        {
+          "id": "FL5_ENGINE_RPM",
+          "name": "Engine RPM",
+          "fmt": {
+            "bix": 48,
+            "len": 16,
+            "max": 16383.75,
+            "div": 4,
+            "unit": "rpm"
+          },
+          "path": "Engine",
+          "description": "confidence=high; r = 0.99999984 against the tuning tool's RPM column"
+        },
+        {
+          "id": "FL5_MAP_ABS",
+          "name": "Manifold absolute pressure",
+          "fmt": {
+            "bix": 72,
+            "len": 16,
+            "max": 511.9921875,
+            "div": 128,
+            "unit": "kilopascal"
+          },
+          "path": "Engine",
+          "description": "confidence=high; matches the tuning tool's MAP column; a 282 kPa absolute peak under full boost lines up with the in-car display reading 1.83 bar gauge"
+        },
+        {
+          "id": "FL5_ECT",
+          "name": "Engine coolant temperature",
+          "fmt": {
+            "bix": 88,
+            "len": 8,
+            "min": -40,
+            "max": 215,
+            "add": -40,
+            "unit": "celsius"
+          },
+          "path": "Engine",
+          "description": "confidence=high; agrees item by item with the in-car coolant temperature display"
+        },
+        {
+          "id": "FL5_IAT",
+          "name": "Intake air temperature",
+          "fmt": {
+            "bix": 104,
+            "len": 8,
+            "min": -40,
+            "max": 215,
+            "add": -40,
+            "unit": "celsius"
+          },
+          "path": "Engine",
+          "description": "confidence=high; matches the tuning tool's IAT column"
+        },
+        {
+          "id": "FL5_MAP_ALT_INT",
+          "name": "Manifold pressure (8-bit)",
+          "fmt": {
+            "bix": 120,
+            "len": 8,
+            "max": 255,
+            "unit": "kilopascal"
+          },
+          "path": "Engine",
+          "description": "confidence=medium; a coarse MAP, r = 0.995 against the 16-bit one; saturates at 255 under high boost, so the 8-bit range is insufficient"
+        },
+        {
+          "id": "FL5_BARO",
+          "name": "Barometric pressure",
+          "fmt": {
+            "bix": 136,
+            "len": 8,
+            "max": 255,
+            "unit": "kilopascal"
+          },
+          "path": "Engine",
+          "description": "confidence=medium; two integer points on two days (1006 hPa→100, 1009 hPa→101); VSA `4005[21]` carries the same value"
+        },
+        {
+          "id": "FL5_VEHICLE_SPEED",
+          "name": "Vehicle speed",
+          "fmt": {
+            "bix": 144,
+            "len": 8,
+            "max": 255,
+            "unit": "kilometersPerHour"
+          },
+          "path": "Movement",
+          "description": "confidence=high; verified 0–114 km/h; the 0.621 slope against the tool's mph column is exactly the unit conversion"
+        },
+        {
+          "id": "FL5_IGN_ADVANCE",
+          "name": "Ignition advance",
+          "fmt": {
+            "bix": 168,
+            "len": 8,
+            "min": -64,
+            "max": 63.5,
+            "div": 2,
+            "add": -64,
+            "unit": "degrees"
+          },
+          "path": "Engine",
+          "description": "confidence=high; matches the tuning tool's ignition advance column"
+        },
+        {
+          "id": "FL5_BATTERY_V",
+          "name": "Battery voltage",
+          "fmt": {
+            "bix": 176,
+            "len": 8,
+            "max": 25.5,
+            "div": 10,
+            "unit": "volts"
+          },
+          "path": "Electrical",
+          "description": "confidence=high; 96% of samples agree point for point with the tuning tool"
+        },
+        {
+          "id": "FL5_INJ_PULSE",
+          "name": "Injector pulse width",
+          "fmt": {
+            "bix": 192,
+            "len": 16,
+            "max": 65.535,
+            "div": 1000,
+            "unit": "milliseconds"
+          },
+          "path": "Fuel",
+          "description": "confidence=high; matches the tuning tool's injector pulse width column"
+        },
+        {
+          "id": "FL5_FUEL_PUMP_DUTY",
+          "name": "Fuel pump duty",
+          "fmt": {
+            "bix": 208,
+            "len": 16,
+            "max": 7281.666666667,
+            "div": 9,
+            "unit": "percent"
+          },
+          "path": "Fuel",
+          "description": "confidence=medium; stands in a 10/9 normalised relation to another channel, which looks more like a pump duty cycle than a low-side fuel pressure"
+        },
+        {
+          "id": "FL5_AC_REQUEST",
+          "name": "A/C request",
+          "fmt": {
+            "bix": 262,
+            "len": 2,
+            "max": 3,
+            "unit": "scalar"
+          },
+          "path": "Climate",
+          "description": "confidence=medium; takes 0x00 / 0x01 / 0x03 in the archive: 0x01 with the key on and the engine off, 0x03 about 5 s after start. bit1 is exactly the bit the public signal set points at, but nobody ever marked the A/C switch, so this stays a candidate"
+        },
+        {
+          "id": "FL5_AIRFLOW",
+          "name": "Mass air flow",
+          "fmt": {
+            "bix": 272,
+            "len": 16,
+            "max": 655.35,
+            "div": 100,
+            "unit": "gramsPerSecond"
+          },
+          "path": "Engine",
+          "description": "confidence=high; r = 0.99996 against the relation AFM.c = 30000·AFM/RPM"
+        },
+        {
+          "id": "FL5_BOOST_LOAD_STATE",
+          "name": "Boost load state",
+          "fmt": {
+            "bix": 312,
+            "len": 8,
+            "max": 255,
+            "unit": "scalar",
+            "map": {
+              "0": "normal",
+              "1": "boosted_load",
+              "2": "high_boost"
+            }
+          },
+          "path": "Engine",
+          "description": "confidence=medium; re-checked over the whole archive (31 logs, 53,908 samples, 180 state changes): every non-zero state has MAP_ABS ≥ 100.25 kPa. A single pressure threshold and a Schmitt hysteresis are both refuted; state 2 has only 8 independent entries, so its threshold is not identifiable"
+        },
+        {
+          "id": "FL5_AIR_CHARGE_ALT",
+          "name": "Air charge (8-bit)",
+          "fmt": {
+            "bix": 320,
+            "len": 8,
+            "min": -0.23,
+            "max": 90.7285,
+            "mul": 3567,
+            "div": 10000,
+            "add": -0.23,
+            "unit": "unknown"
+          },
+          "path": "Engine",
+          "description": "confidence=medium; unit=flashpro_AIRC_unit (OBDb 无对应枚举); r = 0.99 against the tuning tool's air-charge column; an 8-bit version of it"
+        },
+        {
+          "id": "FL5_IAT2",
+          "name": "Intake air temperature 2",
+          "fmt": {
+            "bix": 336,
+            "len": 8,
+            "min": -40,
+            "max": 215,
+            "add": -40,
+            "unit": "celsius"
+          },
+          "path": "Engine",
+          "description": "confidence=high; matches the tuning tool's IAT2 column; the physical location is not inferred from the name"
+        },
+        {
+          "id": "FL5_OIL_PRESSURE_SENSOR_8BIT",
+          "name": "Engine oil pressure (8-bit)",
+          "fmt": {
+            "bix": 344,
+            "len": 8,
+            "min": -148.5,
+            "max": 851.355,
+            "mul": 3921,
+            "div": 1000,
+            "add": -148.5,
+            "unit": "kilopascal"
+          },
+          "path": "Fluids",
+          "description": "confidence=medium; r = 0.99995 against the 16-bit oil pressure, but its zero is not zero (raw = 38 at a true 0 kPa), so it cannot be used as a pressure directly"
+        },
+        {
+          "id": "FL5_OIL_PRESSURE",
+          "name": "Engine oil pressure",
+          "fmt": {
+            "bix": 352,
+            "len": 16,
+            "max": 65535,
+            "unit": "kilopascal"
+          },
+          "path": "Fluids",
+          "description": "confidence=high; 2,021 samples at zero engine speed read exactly 0 while the same responses carry BARO = 101 and MAP = 100.3, which rules out a dead sensor; idle readings of 241 / 251 against an in-car 252 support a gauge-pressure reading"
+        },
+        {
+          "id": "FL5_MAP_MMHG",
+          "name": "Manifold pressure (mmHg scale)",
+          "fmt": {
+            "bix": 384,
+            "len": 16,
+            "max": 6553.5,
+            "div": 10,
+            "unit": "unknown"
+          },
+          "path": "Engine",
+          "description": "confidence=medium; unit=mmHg (OBDb 无对应枚举); r = 0.994 against MAP; the 0.1 mmHg/LSB unit is an assumption"
+        }
+      ]
+    },
+    {
+      "hdr": "DA10",
+      "rax": "10",
+      "cmd": {
+        "22": "2611"
+      },
+      "freq": 1,
+      "signals": [
+        {
+          "id": "FL5_LAMBDA_ALT",
+          "name": "Lambda (alternate)",
+          "fmt": {
+            "bix": 48,
+            "len": 16,
+            "max": 1.999969474,
+            "mul": 3.0517578e-05,
+            "unit": "scalar"
+          },
+          "path": "Fuel",
+          "description": "confidence=medium; only ever moves within 0.997–1.016; possibly a second sensor or a filtered value"
+        },
+        {
+          "id": "FL5_LAMBDA",
+          "name": "Lambda",
+          "fmt": {
+            "bix": 64,
+            "len": 16,
+            "max": 1.999969474,
+            "mul": 3.0517578e-05,
+            "unit": "scalar"
+          },
+          "path": "Fuel",
+          "description": "confidence=high; AFR = λ × 14.7; the public signal set decodes the same bytes as ×29.4/65535 = AFR, which agrees"
+        },
+        {
+          "id": "FL5_SHORT_TRIM",
+          "name": "Short term fuel trim",
+          "fmt": {
+            "bix": 80,
+            "len": 8,
+            "min": -100,
+            "max": 99.21875,
+            "mul": 25,
+            "div": 32,
+            "add": -100,
+            "unit": "percent"
+          },
+          "path": "Fuel",
+          "description": "confidence=high; exact coefficient 0.78125·raw − 100 recovered from unrounded values"
+        },
+        {
+          "id": "FL5_LONG_TRIM",
+          "name": "Long term fuel trim",
+          "fmt": {
+            "bix": 88,
+            "len": 8,
+            "min": -100,
+            "max": 99.21875,
+            "mul": 25,
+            "div": 32,
+            "add": -100,
+            "unit": "percent"
+          },
+          "path": "Fuel",
+          "description": "confidence=high; same encoding as short-term trim"
+        },
+        {
+          "id": "FL5_LAMBDA_CMD",
+          "name": "Lambda target",
+          "fmt": {
+            "bix": 96,
+            "len": 16,
+            "max": 1.999969474,
+            "mul": 3.0517578e-05,
+            "unit": "scalar"
+          },
+          "path": "Fuel",
+          "description": "confidence=high; its difference from measured lambda is the error the closed loop is chasing"
+        },
+        {
+          "id": "FL5_FUEL_STATUS",
+          "name": "Fuel system status",
+          "fmt": {
+            "bix": 112,
+            "len": 8,
+            "max": 255,
+            "unit": "scalar"
+          },
+          "path": "Fuel",
+          "description": "confidence=high; only the values 2 and 4 have been observed"
+        },
+        {
+          "id": "FL5_CAM_CMD",
+          "name": "Intake cam phase target",
+          "fmt": {
+            "bix": 128,
+            "len": 8,
+            "max": -74.5,
+            "mul": -1,
+            "div": 2,
+            "add": 53,
+            "unit": "degrees"
+          },
+          "path": "Engine",
+          "description": "confidence=high; corrected to 53 − 0.5·raw from unrounded values"
+        },
+        {
+          "id": "FL5_CAM",
+          "name": "Intake cam phase",
+          "fmt": {
+            "bix": 136,
+            "len": 8,
+            "max": -74.5,
+            "mul": -1,
+            "div": 2,
+            "add": 53,
+            "unit": "degrees"
+          },
+          "path": "Engine",
+          "description": "confidence=high; same encoding; its difference from the command shows the VTC response"
+        },
+        {
+          "id": "FL5_VTS",
+          "name": "VTEC engaged",
+          "fmt": {
+            "bix": 151,
+            "len": 1,
+            "max": 1,
+            "unit": "offon"
+          },
+          "path": "Engine",
+          "description": "confidence=high; 0/2 = off, 1/3 = on (bit0)"
+        },
+        {
+          "id": "FL5_GEAR",
+          "name": "Gear",
+          "fmt": {
+            "bix": 152,
+            "len": 8,
+            "max": 255,
+            "unit": "scalar"
+          },
+          "path": "Transmission",
+          "description": "confidence=high; 96% agreement with the speed/rpm ratio while driving; 0 means neutral or clutch depressed. The reverse value has never been seen — selecting reverse still reads 0"
+        },
+        {
+          "id": "FL5_PEDAL",
+          "name": "Accelerator pedal",
+          "fmt": {
+            "bix": 160,
+            "len": 16,
+            "max": 327.675,
+            "div": 200,
+            "unit": "percent"
+          },
+          "path": "Engine",
+          "description": "confidence=high; accelerator pedal position, distinct from throttle"
+        },
+        {
+          "id": "FL5_THROTTLE",
+          "name": "Throttle position",
+          "fmt": {
+            "bix": 176,
+            "len": 16,
+            "max": 327.675,
+            "div": 200,
+            "unit": "percent"
+          },
+          "path": "Engine",
+          "description": "confidence=high; actual electronic throttle position; it does not track the pedal one to one"
+        },
+        {
+          "id": "FL5_BOOST_PRESSURE",
+          "name": "Boost pressure (absolute)",
+          "fmt": {
+            "bix": 192,
+            "len": 16,
+            "max": 862.302631579,
+            "div": 76,
+            "unit": "kilopascal"
+          },
+          "path": "Engine",
+          "description": "confidence=high; pressure ahead of the throttle, different from MAP at idle; up to 202–215 kPa absolute while driving"
+        },
+        {
+          "id": "FL5_BOOST_CMD",
+          "name": "Boost pressure target",
+          "fmt": {
+            "bix": 208,
+            "len": 16,
+            "max": 862.302631579,
+            "div": 76,
+            "unit": "kilopascal"
+          },
+          "path": "Engine",
+          "description": "confidence=high; the target, same encoding"
+        },
+        {
+          "id": "FL5_WASTEGATE",
+          "name": "Wastegate position",
+          "fmt": {
+            "bix": 224,
+            "len": 16,
+            "sign": true,
+            "min": -32.768,
+            "max": 32.767,
+            "div": 1000,
+            "unit": "millimeters"
+          },
+          "path": "Engine",
+          "description": "confidence=high; signed: of 42,797 samples, 41,971 are ≤9000 and 826 are ≥65000, with nothing in between; 34 adjacent-sample transitions cross the sign boundary and read as >30000 jumps unsigned but as zero jumps signed"
+        },
+        {
+          "id": "FL5_WASTEGATE_CMD",
+          "name": "Wastegate position target",
+          "fmt": {
+            "bix": 240,
+            "len": 16,
+            "max": 65.535,
+            "div": 1000,
+            "unit": "millimeters"
+          },
+          "path": "Engine",
+          "description": "confidence=high; never negative, so it is still read unsigned; the millimetre unit is unproven"
+        },
+        {
+          "id": "FL5_AIRC",
+          "name": "Air charge",
+          "fmt": {
+            "bix": 256,
+            "len": 16,
+            "max": 1535.9765625,
+            "mul": 3,
+            "div": 128,
+            "unit": "percent"
+          },
+          "path": "Engine",
+          "description": "confidence=high; the ECU's primary load quantity, reaching 218% under boost. It must not be mapped onto OBD calculated load"
+        },
+        {
+          "id": "FL5_EXCAM",
+          "name": "Exhaust cam phase",
+          "fmt": {
+            "bix": 272,
+            "len": 8,
+            "min": -23,
+            "max": 28,
+            "div": 5,
+            "add": -23,
+            "unit": "degrees"
+          },
+          "path": "Engine",
+          "description": "confidence=high; coefficient 0.2·raw − 23 recovered from unrounded values"
+        },
+        {
+          "id": "FL5_EXCAM_CMD",
+          "name": "Exhaust cam phase target",
+          "fmt": {
+            "bix": 280,
+            "len": 8,
+            "min": -23,
+            "max": 28,
+            "div": 5,
+            "add": -23,
+            "unit": "degrees"
+          },
+          "path": "Engine",
+          "description": "confidence=high; same encoding"
+        },
+        {
+          "id": "FL5_CAT_TEMP",
+          "name": "Catalyst temperature",
+          "fmt": {
+            "bix": 288,
+            "len": 16,
+            "max": 5461.228155,
+            "mul": 0.083333,
+            "unit": "celsius"
+          },
+          "path": "Emissions",
+          "description": "confidence=high; an ECU model value; observed 303–766 °C"
+        },
+        {
+          "id": "FL5_DI_FUEL_PRESSURE",
+          "name": "Direct injection fuel pressure",
+          "fmt": {
+            "bix": 304,
+            "len": 16,
+            "max": 655350,
+            "mul": 10,
+            "unit": "kilopascal"
+          },
+          "path": "Fuel",
+          "description": "confidence=high; actual direct-injection rail pressure, 43.5–200 bar; an earlier swap with the commanded value was corrected"
+        },
+        {
+          "id": "FL5_OIL_PRESSURE_MIRROR",
+          "name": "Engine oil pressure (mirror)",
+          "fmt": {
+            "bix": 320,
+            "len": 16,
+            "max": 65535,
+            "unit": "kilopascal"
+          },
+          "path": "Fluids",
+          "description": "confidence=high; the same quantity as in `2610` sampled at a different instant (pairs agree exactly only 79.9% of the time)"
+        },
+        {
+          "id": "FL5_PTANK",
+          "name": "Unresolved pressure quantity (PTANK)",
+          "fmt": {
+            "bix": 336,
+            "len": 16,
+            "max": 505.203515264,
+            "mul": 25,
+            "div": 3243,
+            "unit": "unknown"
+          },
+          "path": "Engine",
+          "description": "confidence=medium; unit=unresolved (OBDb 无对应枚举); the numbers look like kPa (221–296) but are implausible for tank pressure, and they correlate strongly with the air-charge limits — a limit or model quantity. Do not read it as fuel tank pressure"
+        },
+        {
+          "id": "FL5_DI_FUEL_PRESSURE_CMD",
+          "name": "Direct injection fuel pressure target",
+          "fmt": {
+            "bix": 352,
+            "len": 16,
+            "max": 32767.5,
+            "div": 2,
+            "unit": "kilopascal"
+          },
+          "path": "Fuel",
+          "description": "confidence=high; r = 0.99997 against the actual value"
+        },
+        {
+          "id": "FL5_TORQUE_REQ",
+          "name": "Requested torque",
+          "fmt": {
+            "bix": 368,
+            "len": 8,
+            "max": 100,
+            "mul": 20,
+            "div": 51,
+            "unit": "percent"
+          },
+          "path": "Engine",
+          "description": "confidence=high; a normalised percentage; the reference torque is unknown, so it cannot be converted to N·m"
+        },
+        {
+          "id": "FL5_TORQUE_ACT",
+          "name": "Actual torque",
+          "fmt": {
+            "bix": 376,
+            "len": 8,
+            "max": 100,
+            "mul": 20,
+            "div": 51,
+            "unit": "percent"
+          },
+          "path": "Engine",
+          "description": "confidence=high; same as above"
+        },
+        {
+          "id": "FL5_TORQUE_MAX",
+          "name": "Maximum torque (unit undetermined)",
+          "fmt": {
+            "bix": 384,
+            "len": 8,
+            "max": 1530.612,
+            "mul": 7503,
+            "div": 1250,
+            "unit": "unknown"
+          },
+          "path": "Engine",
+          "description": "confidence=medium; unit=unresolved (OBDb 无对应枚举); probably the torque ceiling for the current conditions; unit undetermined"
+        },
+        {
+          "id": "FL5_AIRC_MAX",
+          "name": "Air charge limit",
+          "fmt": {
+            "bix": 392,
+            "len": 8,
+            "max": 1530.612,
+            "mul": 7503,
+            "div": 1250,
+            "unit": "percent"
+          },
+          "path": "Engine",
+          "description": "confidence=medium; `[49]` / `[57]` / `[58]` are equal at all times, so the three names are indistinguishable in this data"
+        },
+        {
+          "id": "FL5_AIRC_PROT",
+          "name": "Air charge protection limit",
+          "fmt": {
+            "bix": 456,
+            "len": 8,
+            "max": 1530.612,
+            "mul": 7503,
+            "div": 1250,
+            "unit": "percent"
+          },
+          "path": "Engine",
+          "description": "confidence=medium; same as above"
+        },
+        {
+          "id": "FL5_AIRC_COMP",
+          "name": "Air charge compensation limit",
+          "fmt": {
+            "bix": 464,
+            "len": 8,
+            "max": 1530.612,
+            "mul": 7503,
+            "div": 1250,
+            "unit": "percent"
+          },
+          "path": "Engine",
+          "description": "confidence=medium; same as above"
+        }
+      ]
+    },
+    {
+      "hdr": "DA10",
+      "rax": "10",
+      "cmd": {
+        "22": "2660"
+      },
+      "freq": 1,
+      "signals": [
+        {
+          "id": "FL5_ODOMETER",
+          "name": "Odometer",
+          "fmt": {
+            "bix": 344,
+            "len": 24,
+            "max": 16777215,
+            "unit": "kilometers"
+          },
+          "path": "Trips",
+          "description": "confidence=high; checked against the cluster reading"
+        },
+        {
+          "id": "FL5_ENGINE_RUNTIME",
+          "name": "Engine run time",
+          "fmt": {
+            "bix": 368,
+            "len": 16,
+            "max": 65535,
+            "unit": "seconds"
+          },
+          "path": "Engine",
+          "description": "confidence=medium; taken from the public signal set; not independently verified here"
+        }
+      ]
+    },
+    {
+      "hdr": "DA10",
+      "rax": "10",
+      "cmd": {
+        "22": "2662"
+      },
+      "freq": 1,
+      "signals": [
+        {
+          "id": "FL5_KNOCK_CONTROL",
+          "name": "Knock control",
+          "fmt": {
+            "bix": 80,
+            "len": 8,
+            "max": 2,
+            "mul": 2,
+            "div": 255,
+            "unit": "scalar"
+          },
+          "path": "Engine",
+          "description": "confidence=medium; taken from the public signal set; not independently verified here"
+        },
+        {
+          "id": "FL5_CAT_TEMP_MIRROR",
+          "name": "Catalyst temperature (mirror)",
+          "fmt": {
+            "bix": 96,
+            "len": 16,
+            "max": 5461.228155,
+            "mul": 0.083333,
+            "unit": "celsius"
+          },
+          "path": "Emissions",
+          "description": "confidence=high; r = 1.000 against the catalyst temperature in `2611`"
+        },
+        {
+          "id": "FL5_VTC_DUTY",
+          "name": "VTC actuator duty",
+          "fmt": {
+            "bix": 224,
+            "len": 8,
+            "max": 100,
+            "mul": 20,
+            "div": 51,
+            "unit": "percent"
+          },
+          "path": "Engine",
+          "description": "confidence=medium; adopted from the public signal set; on this car the raw value moves over 15..123 with engine speed. It was once mis-read as a coolant temperature duplicate"
+        }
+      ]
+    },
+    {
+      "hdr": "DA10",
+      "rax": "10",
+      "cmd": {
+        "22": "2665"
+      },
+      "freq": 1,
+      "signals": [
+        {
+          "id": "FL5_ENGINE_RUNTIME_COPY",
+          "name": "Engine run time (copy)",
+          "fmt": {
+            "bix": 64,
+            "len": 16,
+            "max": 65535,
+            "unit": "seconds"
+          },
+          "path": "Engine",
+          "description": "confidence=medium; equal sample by sample to the run time in `2660` (250/278; the rest differ by 1 s across a second boundary)"
+        }
+      ]
+    },
+    {
+      "hdr": "DA10",
+      "rax": "10",
+      "cmd": {
+        "22": "268F"
+      },
+      "freq": 1,
+      "signals": [
+        {
+          "id": "FL5_OIL_TEMP_MODEL",
+          "name": "Engine oil temperature (ECU model)",
+          "fmt": {
+            "bix": 120,
+            "len": 8,
+            "min": -40,
+            "max": 215,
+            "add": -40,
+            "unit": "celsius"
+          },
+          "path": "Fluids",
+          "description": "confidence=high; an ECU model value. Matches the cluster point for point over 54→67 °C; the in-car display showed 54 °C where the bus read 55 °C; warm-up is continuous over 32→81 °C. No precedent in any public source; the model algorithm, the sensor arrangement and the start-up display threshold are all unverified"
+        }
+      ]
+    },
+    {
+      "hdr": "DA28",
+      "rax": "28",
+      "cmd": {
+        "22": "4001"
+      },
+      "freq": 1,
+      "signals": [
+        {
+          "id": "FL5_LONGITUDINAL_G",
+          "name": "Longitudinal acceleration",
+          "fmt": {
+            "bix": 416,
+            "len": 8,
+            "min": -2.5,
+            "max": 2.6,
+            "div": 50,
+            "add": -2.5,
+            "unit": "gravity"
+          },
+          "path": "Movement",
+          "description": "confidence=medium; zero at raw = 125; r = 0.67–0.83 against acceleration differentiated from wheel speed, free slope 1.039, residual 0.030 g. Only one trip sampled wheel speed fast enough to compute dv/dt"
+        }
+      ]
+    },
+    {
+      "hdr": "DA28",
+      "rax": "28",
+      "cmd": {
+        "22": "4004"
+      },
+      "freq": 1,
+      "signals": [
+        {
+          "id": "FL5_WHEEL_SPEED_FL_VSA",
+          "name": "Wheel speed front left (VSA, coarse)",
+          "fmt": {
+            "bix": 64,
+            "len": 8,
+            "max": 382.5,
+            "mul": 3,
+            "div": 2,
+            "unit": "kilometersPerHour"
+          },
+          "path": "Movement",
+          "description": "confidence=medium; 1.5 km/h per LSB; the wheel order is inferred from the EPS packet, not independently confirmed"
+        },
+        {
+          "id": "FL5_WHEEL_SPEED_FR_VSA",
+          "name": "Wheel speed front right (VSA, coarse)",
+          "fmt": {
+            "bix": 72,
+            "len": 8,
+            "max": 382.5,
+            "mul": 3,
+            "div": 2,
+            "unit": "kilometersPerHour"
+          },
+          "path": "Movement",
+          "description": "confidence=medium; same as above"
+        },
+        {
+          "id": "FL5_WHEEL_SPEED_RL_VSA",
+          "name": "Wheel speed rear left (VSA, coarse)",
+          "fmt": {
+            "bix": 80,
+            "len": 8,
+            "max": 382.5,
+            "mul": 3,
+            "div": 2,
+            "unit": "kilometersPerHour"
+          },
+          "path": "Movement",
+          "description": "confidence=medium; same as above"
+        },
+        {
+          "id": "FL5_WHEEL_SPEED_RR_VSA",
+          "name": "Wheel speed rear right (VSA, coarse)",
+          "fmt": {
+            "bix": 88,
+            "len": 8,
+            "max": 382.5,
+            "mul": 3,
+            "div": 2,
+            "unit": "kilometersPerHour"
+          },
+          "path": "Movement",
+          "description": "confidence=medium; same as above"
+        },
+        {
+          "id": "FL5_BRAKE_SWITCH",
+          "name": "Brake switch",
+          "fmt": {
+            "bix": 127,
+            "len": 1,
+            "max": 1,
+            "unit": "offon"
+          },
+          "path": "Brakes",
+          "description": "confidence=medium; agrees with the public signal set once the MSB0 bit numbering is applied: bix 127 is byte 15 bit0"
+        }
+      ]
+    },
+    {
+      "hdr": "DA28",
+      "rax": "28",
+      "cmd": {
+        "22": "4005"
+      },
+      "freq": 1,
+      "signals": [
+        {
+          "id": "FL5_BRAKE_PRESSURE",
+          "name": "Brake master cylinder pressure",
+          "fmt": {
+            "bix": 56,
+            "len": 16,
+            "min": -25,
+            "max": 65510,
+            "add": -25,
+            "unit": "bars"
+          },
+          "path": "Brakes",
+          "description": "confidence=high; 0 at rest; the in-car display's 5 MPa and 10 MPa correspond to 50 bar and 106 bar here (about 6% apart, kept as-is)"
+        },
+        {
+          "id": "FL5_BARO_MIRROR",
+          "name": "Barometric pressure (VSA mirror)",
+          "fmt": {
+            "bix": 168,
+            "len": 8,
+            "max": 255,
+            "unit": "kilopascal"
+          },
+          "path": "Engine",
+          "description": "confidence=medium; same value as `2610[17]`"
+        }
+      ]
+    },
+    {
+      "hdr": "DA28",
+      "rax": "28",
+      "cmd": {
+        "22": "4007"
+      },
+      "freq": 1,
+      "signals": [
+        {
+          "id": "FL5_BRAKE_SWITCH_MIRROR",
+          "name": "Brake switch (VSA mirror)",
+          "fmt": {
+            "bix": 77,
+            "len": 1,
+            "max": 1,
+            "unit": "offon"
+          },
+          "path": "Brakes",
+          "description": "confidence=medium; not a clean mirror of the brake switch: `[9]` only ever takes 0 / 4 / 12 and never 8, and what holds is «bit2 = pedal OR bit3». While bit3 is set, bit2 does not fall back when the pedal is released — using it as a brake indicator will keep the indicator lit throughout a Brake Hold"
+        },
+        {
+          "id": "FL5_REVERSE_GEAR",
+          "name": "Reverse gear engaged",
+          "fmt": {
+            "bix": 94,
+            "len": 1,
+            "max": 1,
+            "unit": "offon"
+          },
+          "path": "Transmission",
+          "description": "confidence=high; four transitions across two reversing manoeuvres while driving, plus a 30 s stationary segment held in reverse"
+        },
+        {
+          "id": "FL5_SEATBELT_DRIVER",
+          "name": "Driver seatbelt fastened",
+          "fmt": {
+            "bix": 138,
+            "len": 1,
+            "max": 1,
+            "unit": "offon"
+          },
+          "path": "Seatbelts",
+          "description": "confidence=high; two independent unfasten / fasten actions: cleared on unfasten, set on fasten"
+        },
+        {
+          "id": "FL5_BRAKE_HOLD_ACTIVE",
+          "name": "Brake Hold enabled",
+          "fmt": {
+            "bix": 174,
+            "len": 1,
+            "max": 1,
+            "unit": "offon"
+          },
+          "path": "Brakes",
+          "description": "confidence=medium; synchronous with the cluster bit `7021[7] bit7`; verified by a single stationary press / cancel, needs repeating"
+        },
+        {
+          "id": "FL5_CLUTCH_PEDAL",
+          "name": "Clutch pedal travel",
+          "fmt": {
+            "bix": 192,
+            "len": 8,
+            "max": 255,
+            "unit": "percent"
+          },
+          "path": "Transmission",
+          "description": "confidence=high; fully separated (0 / 100) across five stationary press-and-release cycles; intermediate values such as 3–36 appear when shifting on the move, so it is travel in percent, not a switch"
+        }
+      ]
+    },
+    {
+      "hdr": "DA28",
+      "rax": "28",
+      "cmd": {
+        "22": "4009"
+      },
+      "freq": 1,
+      "signals": [
+        {
+          "id": "FL5_EPB_APPLIED",
+          "name": "Electric parking brake applied",
+          "fmt": {
+            "bix": 72,
+            "len": 8,
+            "max": 255,
+            "unit": "unknown"
+          },
+          "path": "Brakes",
+          "description": "confidence=medium; unit=raw (OBDb 无对应枚举); the byte becomes 0xAF when the electric parking brake is applied; single observation"
+        },
+        {
+          "id": "FL5_VEHICLE_SPEED_VSA",
+          "name": "Vehicle speed (VSA)",
+          "fmt": {
+            "bix": 256,
+            "len": 8,
+            "max": 255,
+            "unit": "kilometersPerHour"
+          },
+          "path": "Movement",
+          "description": "confidence=high; integer speed, agrees with the ECM's"
+        }
+      ]
+    },
+    {
+      "hdr": "DA30",
+      "rax": "30",
+      "cmd": {
+        "22": "4818"
+      },
+      "freq": 1,
+      "signals": [
+        {
+          "id": "FL5_VEHICLE_SPEED_COPY_4818",
+          "name": "Vehicle speed (EPS copy) (0x4818)",
+          "fmt": {
+            "bix": 120,
+            "len": 8,
+            "max": 255,
+            "unit": "kilometersPerHour"
+          },
+          "path": "Movement",
+          "description": "confidence=high; EPS-side vehicle speed duplicate (16-bit ×0.01 in `48BD`, 8-bit integer in `4818`)"
+        },
+        {
+          "id": "FL5_WHEEL_SPEED_FL_8BIT",
+          "name": "Wheel speed front left (8-bit)",
+          "fmt": {
+            "bix": 200,
+            "len": 8,
+            "max": 255,
+            "unit": "kilometersPerHour"
+          },
+          "path": "Movement",
+          "description": "confidence=medium; 1 km/h integer version; wheel order inferred from `48C4`"
+        },
+        {
+          "id": "FL5_WHEEL_SPEED_FR_8BIT",
+          "name": "Wheel speed front right (8-bit)",
+          "fmt": {
+            "bix": 208,
+            "len": 8,
+            "max": 255,
+            "unit": "kilometersPerHour"
+          },
+          "path": "Movement",
+          "description": "confidence=medium; same as above"
+        },
+        {
+          "id": "FL5_WHEEL_SPEED_RL_8BIT",
+          "name": "Wheel speed rear left (8-bit)",
+          "fmt": {
+            "bix": 216,
+            "len": 8,
+            "max": 255,
+            "unit": "kilometersPerHour"
+          },
+          "path": "Movement",
+          "description": "confidence=medium; same as above"
+        },
+        {
+          "id": "FL5_WHEEL_SPEED_RR_8BIT",
+          "name": "Wheel speed rear right (8-bit)",
+          "fmt": {
+            "bix": 224,
+            "len": 8,
+            "max": 255,
+            "unit": "kilometersPerHour"
+          },
+          "path": "Movement",
+          "description": "confidence=medium; same as above"
+        }
+      ]
+    },
+    {
+      "hdr": "DA30",
+      "rax": "30",
+      "cmd": {
+        "22": "48AC"
+      },
+      "freq": 1,
+      "signals": [
+        {
+          "id": "FL5_STEER_MODE",
+          "name": "Steering assist mode",
+          "fmt": {
+            "bix": 8,
+            "len": 8,
+            "max": 255,
+            "unit": "scalar",
+            "map": {
+              "1": "comfort",
+              "2": "sport",
+              "3": "plusR"
+            }
+          },
+          "path": "Control",
+          "description": "confidence=high; 1 = comfort, 2 = sport, 3 = +R; a custom mode still reads 1. Consistent across three independent sessions, and the only confirmed drive-mode bit"
+        }
+      ]
+    },
+    {
+      "hdr": "DA30",
+      "rax": "30",
+      "cmd": {
+        "22": "48BD"
+      },
+      "freq": 1,
+      "signals": [
+        {
+          "id": "FL5_STEER_ANGLE",
+          "name": "Steering wheel angle",
+          "fmt": {
+            "bix": 88,
+            "len": 16,
+            "sign": true,
+            "min": -3276.8,
+            "max": 3276.7,
+            "div": 10,
+            "unit": "degrees"
+          },
+          "path": "Control",
+          "description": "confidence=medium; 0.1°/LSB is an assumption: raw −4032 at full left lock, −26 at centre, and an eyeballed ~390° from centre to full lock gives 0.0974°/LSB. Full right lock was never captured and no instrument calibration was done"
+        },
+        {
+          "id": "FL5_VEHICLE_SPEED_COPY_48BD",
+          "name": "Vehicle speed (EPS copy) (0x48BD)",
+          "fmt": {
+            "bix": 120,
+            "len": 16,
+            "max": 655.35,
+            "div": 100,
+            "unit": "kilometersPerHour"
+          },
+          "path": "Movement",
+          "description": "confidence=medium; EPS-side vehicle speed duplicate (16-bit ×0.01 in `48BD`, 8-bit integer in `4818`)"
+        }
+      ]
+    },
+    {
+      "hdr": "DA30",
+      "rax": "30",
+      "cmd": {
+        "22": "48C0"
+      },
+      "freq": 1,
+      "signals": [
+        {
+          "id": "FL5_YAW_RATE",
+          "name": "Yaw rate",
+          "fmt": {
+            "bix": 0,
+            "len": 16,
+            "sign": true,
+            "min": -147.456,
+            "max": 147.4515,
+            "mul": 9,
+            "div": 2000,
+            "unit": "unknown"
+          },
+          "path": "Movement",
+          "description": "confidence=medium; unit=deg/s (OBDb 无对应枚举); r = 0.982 against a model built on a 2.735 m wheelbase and a steering ratio of 13; positive is a right turn. The scale is not calibrated: a wheel-speed geometry method gives a pooled point estimate of 0.004214 with an error-budget interval of [0.00239, 0.00604], and the 43.4% systematic error dwarfs the 14.7% gap between the two candidate scales"
+        }
+      ]
+    },
+    {
+      "hdr": "DA30",
+      "rax": "30",
+      "cmd": {
+        "22": "48C4"
+      },
+      "freq": 1,
+      "signals": [
+        {
+          "id": "FL5_STEER_ANGLE_COPY",
+          "name": "Steering wheel angle (copy)",
+          "fmt": {
+            "bix": 64,
+            "len": 16,
+            "sign": true,
+            "min": -3276.8,
+            "max": 3276.7,
+            "div": 10,
+            "unit": "degrees"
+          },
+          "path": "Control",
+          "description": "confidence=medium; r = 0.96 against the steering angle in `48BD`"
+        },
+        {
+          "id": "FL5_WHEEL_SPEED_FL",
+          "name": "Wheel speed front left",
+          "fmt": {
+            "bix": 184,
+            "len": 16,
+            "max": 655.35,
+            "div": 100,
+            "unit": "kilometersPerHour"
+          },
+          "path": "Movement",
+          "description": "confidence=high; r = 0.997 against ECM vehicle speed; the wheel order comes from outer wheels running faster in a turn and front wheels faster under acceleration"
+        },
+        {
+          "id": "FL5_WHEEL_SPEED_FR",
+          "name": "Wheel speed front right",
+          "fmt": {
+            "bix": 200,
+            "len": 16,
+            "max": 655.35,
+            "div": 100,
+            "unit": "kilometersPerHour"
+          },
+          "path": "Movement",
+          "description": "confidence=high; same as above"
+        },
+        {
+          "id": "FL5_WHEEL_SPEED_RL",
+          "name": "Wheel speed rear left",
+          "fmt": {
+            "bix": 216,
+            "len": 16,
+            "max": 655.35,
+            "div": 100,
+            "unit": "kilometersPerHour"
+          },
+          "path": "Movement",
+          "description": "confidence=high; same as above"
+        },
+        {
+          "id": "FL5_WHEEL_SPEED_RR",
+          "name": "Wheel speed rear right",
+          "fmt": {
+            "bix": 232,
+            "len": 16,
+            "max": 655.35,
+            "div": 100,
+            "unit": "kilometersPerHour"
+          },
+          "path": "Movement",
+          "description": "confidence=high; same as above"
+        }
+      ]
+    },
+    {
+      "hdr": "DA60",
+      "rax": "60",
+      "cmd": {
+        "22": "7020"
+      },
+      "freq": 1,
+      "signals": [
+        {
+          "id": "FL5_SEATBELT_WARN_CLUSTER",
+          "name": "Seatbelt warning (cluster)",
+          "fmt": {
+            "bix": 75,
+            "len": 1,
+            "max": 1,
+            "unit": "offon"
+          },
+          "path": "Seatbelts",
+          "description": "confidence=medium; inverted polarity relative to the VSA bit (here 1 means not fastened)"
+        },
+        {
+          "id": "FL5_EPB_INDICATOR_CLUSTER",
+          "name": "Electric parking brake indicator (cluster)",
+          "fmt": {
+            "bix": 90,
+            "len": 1,
+            "max": 1,
+            "unit": "offon"
+          },
+          "path": "Brakes",
+          "description": "confidence=medium; set when the electric parking brake is applied; single observation"
+        }
+      ]
+    },
+    {
+      "hdr": "DA60",
+      "rax": "60",
+      "cmd": {
+        "22": "7021"
+      },
+      "freq": 1,
+      "signals": [
+        {
+          "id": "FL5_BRAKE_HOLD_ACTIVE_CLUSTER",
+          "name": "Brake Hold enabled (cluster)",
+          "fmt": {
+            "bix": 56,
+            "len": 1,
+            "max": 1,
+            "unit": "offon"
+          },
+          "path": "Brakes",
+          "description": "confidence=medium; synchronous with VSA `4007[21] bit1` (set at +77 s, cleared at +87 s)"
+        }
+      ]
+    },
+    {
+      "hdr": "DA60",
+      "rax": "60",
+      "cmd": {
+        "22": "7022"
+      },
+      "freq": 1,
+      "signals": [
+        {
+          "id": "FL5_ODOMETER_CLUSTER",
+          "name": "Odometer (cluster)",
+          "fmt": {
+            "bix": 48,
+            "len": 24,
+            "max": 16777215,
+            "unit": "kilometers"
+          },
+          "path": "Trips",
+          "description": "confidence=high; same value and same unit (km) as the ECM odometer — the public archive's «miles» is wrong"
+        }
+      ]
+    },
+    {
+      "hdr": "DA60",
+      "rax": "60",
+      "cmd": {
+        "22": "7028"
+      },
+      "freq": 1,
+      "signals": [
+        {
+          "id": "FL5_AMBIENT_TEMP",
+          "name": "Ambient temperature",
+          "fmt": {
+            "bix": 136,
+            "len": 8,
+            "max": 255,
+            "unit": "celsius"
+          },
+          "path": "Climate",
+          "description": "confidence=high; raw = 28 corresponds to 28 °C on the in-car display, with no −40 offset (the public archive's −40 does not hold on this car); `[15]` carries the same value. Negative-temperature encoding could never be verified at the capture location"
+        }
+      ]
+    },
+    {
+      "hdr": "DA60",
+      "rax": "60",
+      "cmd": {
+        "22": "7029"
+      },
+      "freq": 1,
+      "signals": [
+        {
+          "id": "FL5_FUEL_LEVEL",
+          "name": "Fuel level",
+          "fmt": {
+            "bix": 96,
+            "len": 16,
+            "max": 655.35,
+            "div": 100,
+            "unit": "liters"
+          },
+          "path": "Fuel",
+          "description": "confidence=high; a smooth 16.57→16.46 L over ten minutes of idling (≈0.66 L/h)"
+        }
+      ]
+    }
+  ]
+}

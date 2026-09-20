@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use this data set, please cite it as below."
+type: dataset
+title: "Honda Civic Type R (FL5) — diagnostic signal reference"
+authors:
+  - alias: Caldis
+version: "1.0.0"
+date-released: "2026-09-21"
+url: "https://github.com/Caldis/fl5-can-signals"
+repository-code: "https://github.com/Caldis/fl5-can-signals"
+license: CC-BY-SA-4.0
+keywords:
+  - obd2
+  - uds
+  - can-bus
+  - honda
+  - civic-type-r
+  - fl5
+  - reverse-engineering
+  - vehicle-data
+abstract: >-
+  Diagnostic signal reference for the Honda Civic Type R (FL5), covering 25 data
+  identifiers and 109 signals read over OBD-II with UDS service 22 (read-only).
+  Every signal carries a confidence level, a one-line statement of the evidence
+  behind it, and the capture session that established it; claims that were later
+  overturned are published together with what the mistake was.

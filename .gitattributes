@@ -1,0 +1,4 @@
+# Generated data and documentation are compared byte for byte; keep LF on every checkout.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
