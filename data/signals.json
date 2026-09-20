@@ -133,7 +133,7 @@
     ]
   },
   "data_version": {
-    "dataset_version": "1.0.0",
+    "dataset_version": "1.0.1",
     "signals_csv_sha256": "efee5056ec7338b4489e59071a4e3bd78fba9d0d9e7d84313eb593c031494041",
     "note": [
       "`dataset_version` is the semantic version of this data set; `signals_csv_sha256` is the content hash of `data/signals.csv`, so you can check the copy in your hands against it.",
@@ -664,7 +664,7 @@
       "observed_min": 0,
       "observed_max": 3,
       "observed_range_withheld": false,
-      "meaning_zh": "空调请求开关: 关=0x00, 开=0x03 (第 32 字节 bit0-1)。OBDb 记录的空调离合位是 bit6, 本车 bit6 恒为 0, 实际翻转位不同。置信度中。",
+      "meaning_zh": "空调请求: raw 0x00/0x01/0x03 (第 32 字节 bit0-1, 掩码 3)。bit0 在钥匙 ON 未着车时已置位 (2021 个样本转速均为 0), bit1 在着车约 5 s 后才置位, 与\"请求/离合器吸合\"的分工一致, 正是 OBDb bix 262 指的那一位、与本车实测无分歧。尚无独立真值 (未有人标记过空调开关操作), 仍是候选。置信度中。",
       "evidence": "takes 0x00 / 0x01 / 0x03 in the archive: 0x01 with the key on and the engine off, 0x03 about 5 s after start. bit1 is exactly the bit the public signal set points at, **but nobody ever marked the A/C switch, so this stays a candidate**",
       "source_report": "cross-check against public signal sets (2026-09-14); bit-order correction (2026-09-20)",
       "key": "10:2610:AC_REQUEST"
@@ -758,7 +758,7 @@
       "observed_min": 0,
       "observed_max": 2,
       "observed_range_withheld": false,
-      "meaning_zh": "2610[39] 的 0/1/2 枚举。非零样本全部处于 MAP>=100 kPa, 对 boost>20 kPa 的召回率 96.2%; 状态 2 只见于高增压与近全开节气门。精确门限和迟滞未解, 置信度中。",
+      "meaning_zh": "2610[39] 的 0/1/2 枚举。2026-09-20 全归档复核 (31 份日志、53,908 样本、180 次状态变化): 非零状态全部 MAP_ABS>=100.25 kPa; 单一压力门限 (绝压/表压) 与 Schmitt 迟滞均已推翻; 转速/档位分层留出集改善 16.96-18.01%, 未过 20% 门槛; state 2 仅 8 次独立进入 (<10), 门限与迟滞不可辨识; 绝压与表压两种说法本归档不可辨识 (BARO 只取到 100/101)。维持置信度中, 不改映射。",
       "evidence": "re-checked over the whole archive (31 logs, 53,908 samples, 180 state changes): every non-zero state has MAP_ABS ≥ 100.25 kPa. **A single pressure threshold and a Schmitt hysteresis are both refuted**; state 2 has only 8 independent entries, so its threshold is not identifiable",
       "source_report": "candidate review (2026-09-18); full-archive re-check (2026-09-20)",
       "key": "10:2610:BOOST_LOAD_STATE"
@@ -1358,7 +1358,7 @@
       "observed_min": 94.513157895,
       "observed_max": 215.078947368,
       "observed_range_withheld": false,
-      "meaning_zh": "节气门前 (涡轮出口/中冷后) 的绝对压力 (kPa, raw/76)。怠速≈大气压 101, 高负载与 MAP 重合, 最高见 202。涡轮表压 = 值−101.325。置信度高。",
+      "meaning_zh": "节气门前 (涡轮出口/中冷后) 的绝对压力 (kPa, raw/76)。怠速≈大气压 101, 高负载与 MAP 重合, 全归档观测范围 94.5–215.1 kPa (round5 满油门达 215)。涡轮表压 = 值−101.325。置信度高。",
       "evidence": "pressure ahead of the throttle, different from MAP at idle; up to 202–215 kPa absolute while driving",
       "source_report": "independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12)",
       "key": "10:2611:BOOST_PRESSURE"
@@ -1418,7 +1418,7 @@
       "observed_min": -0.176,
       "observed_max": 8.412,
       "observed_range_withheld": false,
-      "meaning_zh": "涡轮废气旁通阀 (wastegate) 实际行程 (raw×0.001, 单位疑似 mm, 0–8.5)。阀开得越大越多废气绕过涡轮, 增压越低。单位未证实, 置信度高 (相关性)。",
+      "meaning_zh": "涡轮废气旁通阀 (wastegate) 实际行程 (raw×0.001, 单位疑似 mm)。2026-09-19 改为有符号解码: 全归档 42797 个样本的原始值只落在 ≤9000 与 ≥65000 两段, 中间 (9000,65000) 为空; 34 次跨符号边界的相邻样本按无符号读是 34 次 >30000 的瞬间跳变, 按有符号读则连续为 0 次。观测范围 −0.176–8.412 mm, 含越程 (阀开过头) 的负值段, 与 FlashPro 的 −0.14…含越程一致。阀开得越大越多废气绕过涡轮, 增压越低。单位未证实, 置信度高 (相关性)。",
       "evidence": "**signed**: of 42,797 samples, 41,971 are ≤9000 and 826 are ≥65000, with nothing in between; 34 adjacent-sample transitions cross the sign boundary and read as >30000 jumps unsigned but as zero jumps signed",
       "source_report": "independent re-derivation from the tuning tool's export; re-classified as signed by the bit-level coverage map and confidence review (2026-09-19)",
       "key": "10:2611:WASTEGATE"
@@ -2348,7 +2348,7 @@
       "observed_min": -0.66,
       "observed_max": 0.36,
       "observed_range_withheld": false,
-      "meaning_zh": "4001[51] 按 (raw−125)×0.02 g 的候选。停车中位 0 g, 行驶约 −0.66..+0.30 g; 与车速×偏航率模型最高 r=0.873, 比例接近 1。缺独立参考, 置信度低。",
+      "meaning_zh": "4001[51] 按 (raw−125)×0.02 g 的候选。停车中位 0 g, 行驶约 −0.66..+0.30 g; 与车速×偏航率模型最高 r=0.873。2026-09-20 全归档复核: 与 EPS 48C4[18] 确认是两个独立横向通道 (非逐样本镜像, 「同一来源镜像」已推翻); 分别按 k=1 反推的偏航比例互差 35%, 至少一个刻度是错的, 现有数据不能同时信任两者。缺独立参考, 置信度低。",
       "evidence": "best r = 0.873 against a speed × yaw-rate model. It is **an independent lateral channel**, not a sample-by-sample mirror of the EPS one; back-solving the yaw scale from each of the two gives results 35% apart, so at least one of the two scales is wrong",
       "source_report": "candidate review (2026-09-18); full-archive re-check of the G / yaw scales (2026-09-20)",
       "key": "28:4001:LATERAL_G_VSA_CANDIDATE"
@@ -2648,7 +2648,7 @@
       "observed_min": 0,
       "observed_max": 4,
       "observed_range_withheld": false,
-      "meaning_zh": "4007[9] bit2, 与 4004 刹车开关跨 9 份日志 2844 个样本一致率 97.05%。两个 DID 异步轮询会在刹车边沿产生少量差异。置信度中。",
+      "meaning_zh": "4007[9] bit2 不是 4004[15] bit0 刹车开关的干净镜像：[9] 只取 0/4/12 三态、从不取 8，成立的是「bit2 = 踏板 OR bit3」；6 个带同速率踏板证据的 Brake Hold (bit3) 段里都出现过连续 ≥2 个「开关已读 0 且压力 ≤0 但 bit2 仍为 1」的样本，说明 bit3 置位期间 bit2 不随踏板释放回落——拿它当刹车指示会在 Brake Hold 保持期间持续显示已踩下。与 4004 开关逐样本对齐：1.0 s 容差下覆盖 9 份日志、2829 对，一致率 97.03% (2745/2829)；容差从 0.1 s 放宽到 2.5 s 时一致率在 97.03%–100% 之间随日志构成变化 (2026-09-20 全归档复核)，分歧集中在 Brake Hold 段内，不是两个 DID 异步轮询造成的边沿误差。置信度中。",
       "evidence": "**not a clean mirror of the brake switch**: `[9]` only ever takes 0 / 4 / 12 and never 8, and what holds is «bit2 = pedal OR bit3». While bit3 is set, bit2 does not fall back when the pedal is released — using it as a brake indicator will keep the indicator lit throughout a Brake Hold",
       "source_report": "candidate review (2026-09-18); full-archive re-check (2026-09-20)",
       "key": "28:4007:BRAKE_SWITCH_MIRROR"
@@ -3012,7 +3012,7 @@
       "observed_min": 1,
       "observed_max": 3,
       "observed_range_withheld": false,
-      "meaning_zh": "驾驶模式面板对 EPS 转向助力的设置: 1=舒适, 2=运动, 3=+R; 自定义模式下本字节仍读作舒适 (01)。两次独立会话 (round3、round7) 验证一致。置信度高。",
+      "meaning_zh": "驾驶模式面板对 EPS 转向助力的设置: 1=舒适, 2=运动, 3=+R; 自定义模式下本字节仍读作舒适 (01)。三次独立会话 (round3、round7 早、round7 晚) 验证一致, 是目前唯一确认的驾驶模式位。置信度高。",
       "evidence": "1 = comfort, 2 = sport, 3 = +R; a custom mode still reads 1. Consistent across three independent sessions, and the **only** confirmed drive-mode bit",
       "source_report": "session 7 (2026-09-15), per-segment analysis across a drive-mode sweep",
       "key": "30:48AC:STEER_MODE"
@@ -3166,7 +3166,7 @@
       "observed_min": -46.404,
       "observed_max": 42.183,
       "observed_range_withheld": false,
-      "meaning_zh": "车身绕垂直轴旋转的角速度 (°/s, raw×0.0045, 正=右转)。直行 0, 弯道 ±20 以上。刻度由物理模型 (转向比 13, 轴距 2.735 m) 推得, 误差 ±20%, 待 LogR 定标。置信度中。",
+      "meaning_zh": "车身绕垂直轴旋转的角速度 (°/s, raw×0.0045, 正=右转)。直行 0, 弯道 ±20 以上。刻度由物理模型 (转向比 13, 轴距 2.735 m) 推得, r=0.982; 2026-09-20 误差预算复核: 区间 [0.00239, 0.00604]、点估计 0.004214, 与候选值 0.003924 相差 14.7%、小于系统误差 43.4%, 现有数据无法在两者之间选择, 需要外部参考定标。scale/置信度中不改。",
       "evidence": "r = 0.982 against a model built on a 2.735 m wheelbase and a steering ratio of 13; positive is a right turn. **The scale is not calibrated**: a wheel-speed geometry method gives a pooled point estimate of 0.004214 with an error-budget interval of [0.00239, 0.00604], and the 43.4% systematic error dwarfs the 14.7% gap between the two candidate scales",
       "source_report": "session 3 (2026-09-10), model fit; error budget from the full-archive re-check (2026-09-20)",
       "key": "30:48C0:YAW_RATE"
@@ -4000,6 +4000,10 @@
     ]
   },
   "changelog": [
+    {
+      "version": "1.0.1 (2026-09-21)",
+      "text": "Text-only correction release, no decoding changes: the Chinese descriptions of eight signals were aligned with the English evidence. `AC_REQUEST`, `BOOST_LOAD_STATE` and `YAW_RATE` now carry the conclusions of the 2026-09-20 full-archive re-check. `BRAKE_SWITCH_MIRROR` no longer reads «a mirror of the `4004` brake switch with 97.05% agreement» but «not a clean mirror: while bit3 is set, bit2 does not fall back when the pedal is released», and the agreement rate is now the 97.03% (2745/2829) measured at a 1.0 s tolerance. `WASTEGATE` mentions the change to signed decoding made on 2026-09-19. `STEER_MODE` was verified in three sessions, not two. `LATERAL_G_VSA_CANDIDATE` no longer claims «a ratio close to 1»: there are two independent lateral channels whose implied yaw scales differ by 35%. `BOOST_PRESSURE` has an observed ceiling of 215 kPa, not 202."
+    },
     {
       "version": "1.0.0 (2026-09-21)",
       "text": "First public release. Covers every conclusion filed up to 2026-09-19, including the ten offline analyses completed on 2026-09-20. `WASTEGATE` is now signed. Seven claims were overturned and are recorded in the refuted section: the single threshold and hysteresis for `2610[39]`, «`268F[39]` is a high-load flag», the «four identical switches» in `268F`, all four readings of `10:3004`, «`48BD[21]` is not a mode byte», the strict-mirror reading of `4007[9] bit2`, and the general ECM header bitmap. Observed ranges are withheld for the two odometer signals: an exact odometer reading would identify one specific car."
