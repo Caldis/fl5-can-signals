@@ -1,10 +1,10 @@
 # Honda Civic Type R (FL5) — diagnostic signal reference
 
-25 DIDs / 109 signals read over OBD-II with UDS service 22: offsets, decoding, units, confidence and evidence.
+25 DIDs / 111 signals read over OBD-II with UDS service 22: offsets, decoding, units, confidence and evidence.
 
 [简体中文](README.zh-CN.md)
 
-This reference was assembled from eight on-car capture sessions on one Honda Civic Type R (FL5, K20C1 2.0T, 6-speed manual) between 2026-09-08 and 2026-09-16, plus all the offline analysis that followed. Everything here came from **read-only diagnostics**. Nothing came from flashing, security access or memory reads.
+Signal values come from archived diagnostic captures of this FL5. On 2026-10-08, read-only static evidence from its pre-unlock H020 image was added for ECT2, high-resolution voltage, run-time copies and the 268F oil-temperature candidate. Structural confirmation is distinct from physical calibration and current-software applicability.
 
 It states what was observed **on that one car**, and labels every line with a confidence level. **High confidence does not mean independently calibrated, and it does not mean it holds on a stock car** — the car carries a Hondata FlashPro (unlocked and tuned ECU) and its market version was never confirmed. Verify before you rely on any of this on another vehicle.
 
@@ -30,13 +30,13 @@ That is why the primary key here is «**module address + DID + byte / bit positi
 | ECU software / calibration ID | Not compared. Part numbers for each module were read (see the module table); read yours with `22 F110` / `F112` / `F181` and compare. |
 | Capture span | 2026-09-08 to 2026-09-16, eight on-car sessions; 105 logs entered the statistics, roughly 540,000 diagnostic transactions (277,000 positive responses). |
 
-**The scope of every claim here is: this one car.** The public OBDb Honda-Civic signal set confirms that stock Civics answer `2610` / `2611`; the oil-temperature DID `268F` has **no external corroboration whatsoever** and is the highest-risk item in this document. The no-handshake behaviour was likewise only ever verified on this car.
+Applicability is limited to this FL5. Public signal sets provide comparison evidence; byte 268F[15] also has a dynamic source established in this H020 ROM. LogR correspondence, other vehicles and the current calibration remain unverified. The observed no-handshake behavior cannot be generalized.
 
 Evidence in the other direction: several conclusions here agree with the public OBDb Civic entries (brake pressure, brake switch, fuel level, odometer, run time, knock, lambda), and two errors in that public archive were found in the process (see the refuted list).
 
 ## 3. Quick start
 
-Read one DID and decode one signal. The example below reads engine oil temperature (`ECM 0x10`, DID `0x268F`, data byte 15, `raw − 40 °C`) with [python-can](https://python-can.readthedocs.io) and the ISO-TP helper of your choice. **It only ever sends service `22`.**
+Read one DID and decode one signal. The example below reads engine coolant temperature (`ECM 0x10`, DID `0x2610`, data byte 11, `raw − 40 °C`) with [python-can](https://python-can.readthedocs.io) and the ISO-TP helper of your choice. **It only ever sends service `22`.**
 
 ```python
 # pip install can-isotp python-can
@@ -47,10 +47,10 @@ addr = isotp.Address(isotp.AddressingMode.Normal_29bits,
                      txid=0x18DA10F1, rxid=0x18DAF110)   # request -> ECM, response <- ECM
 stack = isotp.CanStack(bus, address=addr, params={"tx_padding": 0x55, "blocksize": 0, "stmin": 0})
 
-stack.send(bytes([0x22, 0x26, 0x8F]))                   # ReadDataByIdentifier 0x268F
-payload = stack.recv(block=True, timeout=1.0)           # 62 26 8F <54 data bytes>
+stack.send(bytes([0x22, 0x26, 0x10]))                   # ReadDataByIdentifier 0x2610
+payload = stack.recv(block=True, timeout=1.0)           # 62 26 10 <54 data bytes>
 data = payload[3:]                                      # strip the 62 + DID echo: offset 0 == data[0]
-print("oil temperature:", data[15] - 40, "degC")
+print("coolant temperature:", data[11] - 40, "degC")
 ```
 
 Three things will bite you if you skip them:
@@ -165,7 +165,7 @@ All three are produced from the same sources; `tools/validate.py` checks that th
 
 ## 7. Signal tables (by module → DID → offset)
 
-4 modules, 25 DIDs, 109 signals: 52 high, 39 medium, 18 low / candidate.
+4 modules, 25 DIDs, 111 signals: 52 high, 43 medium, 16 low / candidate.
 
 **Confidence is reproduced verbatim from the decode table — never promoted, never demoted.**
 
@@ -179,30 +179,30 @@ The ECM's main data packet; the tuning tool polls it at 18.13 Hz. Oil pressure a
 
 | Signal | Name | Offset | Width | Endian | Sign | Decoding | Unit | Observed range (n) | Confidence | Evidence | First established by |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `ENGINE_RPM` | Engine RPM | 6 | 2 B | big | unsigned | raw × 0.25 | rpm | 0 … 5300 (53908) | high | r = 0.99999984 against the tuning tool's RPM column | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `MAP_ABS` | Manifold absolute pressure | 9 | 2 B | big | unsigned | raw × 0.0078125 | kPa | 22.2734375 … 282.3515625 (53908) | high | matches the tuning tool's MAP column; a 282 kPa absolute peak under full boost lines up with the in-car display reading 1.83 bar gauge | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `ECT` | Engine coolant temperature | 11 | 1 B | big | unsigned | raw − 40 | degC | 33 … 90 (53908) | high | agrees item by item with the in-car coolant temperature display | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `IAT` | Intake air temperature | 13 | 1 B | big | unsigned | raw − 40 | degC | 33 … 65 (53908) | high | matches the tuning tool's IAT column | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `MAP_RELATED_B14` | MAP-related byte 14 (candidate) | 14 | 1 B | big | unsigned | raw × 1.579 − 19.76 | kPa | 22.873 … 278.671 (53908) | low / candidate | not integer kPa and not linear over the full range; the fit coefficients change once positive boost is included, with up to ~31 kPa residual | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `MAP_ALT_INT` | Manifold pressure (8-bit) | 15 | 1 B | big | unsigned | raw | kPa | 23 … 255 (53908) | medium | a coarse MAP, r = 0.995 against the 16-bit one; saturates at 255 under high boost, so the 8-bit range is insufficient | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `BARO` | Barometric pressure | 17 | 1 B | big | unsigned | raw | kPa | 100 … 101 (53908) | medium | two integer points on two days (1006 hPa→100, 1009 hPa→101); VSA `4005[21]` carries the same value | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `VEHICLE_SPEED` | Vehicle speed | 18 | 1 B | big | unsigned | raw | km/h | 0 … 137 (53908) | high | verified 0–114 km/h; the 0.621 slope against the tool's mph column is exactly the unit conversion | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `LOAD_ALT` | Engine load (candidate) | 19 | 1 B | big | unsigned | raw × 0.7615 + 2.46 | flashpro_AIRC_unit | 2.46 … 187.5045 (53908) | low / candidate | r = 0.98 against air charge, nature undetermined. It is currently the single best gating proxy for `2610[39]`, but very likely derives from the same internal load quantity, so it is not independent evidence | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `IGN_ADVANCE` | Ignition advance | 21 | 1 B | big | unsigned | raw × 0.5 − 64 | deg | -42 … 43.5 (53908) | high | matches the tuning tool's ignition advance column | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `BATTERY_V` | Battery voltage | 22 | 1 B | big | unsigned | raw × 0.1 | V | 6 … 14.6 (53908) | high | 96% of samples agree point for point with the tuning tool | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `INJ_PULSE` | Injector pulse width | 24 | 2 B | big | unsigned | raw × 0.001 | ms | 0 … 39.251 (53908) | high | matches the tuning tool's injector pulse width column | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `FUEL_PUMP_DUTY` | Fuel pump duty | 26 | 2 B | big | unsigned | raw × 0.1111111111111111 | % | 4.444444444 … 111.111111111 (53908) | medium | stands in a 10/9 normalised relation to another channel, which looks more like a pump duty cycle than a low-side fuel pressure | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `AC_REQUEST` | A/C request | 32 | 2 bit (mask 0x3) | big | unsigned | raw & 0x3 | bool | 0 … 3 (53908) | medium | takes 0x00 / 0x01 / 0x03 in the archive: 0x01 with the key on and the engine off, 0x03 about 5 s after start. bit1 is exactly the bit the public signal set points at, **but nobody ever marked the A/C switch, so this stays a candidate** | cross-check against public signal sets (2026-09-14); bit-order correction (2026-09-20) |
-| `AIRFLOW` | Mass air flow | 34 | 2 B | big | unsigned | raw × 0.01 | g/s | 0 … 212.91 (53908) | high | r = 0.99996 against the relation AFM.c = 30000·AFM/RPM | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `ECT2` | Slow-response temperature (candidate) | 38 | 1 B | big | unsigned | raw − 40 | degC | 28 … 87 (53908) | low / candidate | r = 1.000 against the tuning tool's ECT2 column, yet within one 292 s file it moves 34→39 °C while coolant goes 58→79 °C — a location with far more thermal inertia | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `BOOST_LOAD_STATE` | Boost load state | 39 | 1 B | big | unsigned | raw | enum | 0 … 2 (53908) | medium | re-checked over the whole archive (31 logs, 53,908 samples, 180 state changes): every non-zero state has MAP_ABS ≥ 100.25 kPa. **A single pressure threshold and a Schmitt hysteresis are both refuted**; state 2 has only 8 independent entries, so its threshold is not identifiable | candidate review (2026-09-18); full-archive re-check (2026-09-20) |
+| `ENGINE_RPM` | Engine RPM | 6 | 2 B | big | unsigned | raw × 0.25 | rpm | 0 … 6101 (57758) | high | r = 0.99999984 against the tuning tool's RPM column | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `MAP_ABS` | Manifold absolute pressure | 9 | 2 B | big | unsigned | raw × 0.0078125 | kPa | 22.2734375 … 282.3515625 (57758) | high | matches the tuning tool's MAP column; a 282 kPa absolute peak under full boost lines up with the in-car display reading 1.83 bar gauge | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `ECT` | Engine coolant temperature | 11 | 1 B | big | unsigned | raw − 40 | degC | 29 … 91 (57758) | high | agrees item by item with the in-car coolant temperature display | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `IAT` | Intake air temperature | 13 | 1 B | big | unsigned | raw − 40 | degC | 28 … 65 (57758) | high | matches the tuning tool's IAT column | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `MAP_RELATED_B14` | MAP-related byte 14 (candidate) | 14 | 1 B | big | unsigned | raw × 1.579 − 19.76 | kPa | 22.873 … 278.671 (57758) | low / candidate | not integer kPa and not linear over the full range; the fit coefficients change once positive boost is included, with up to ~31 kPa residual | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `MAP_ALT_INT` | Manifold pressure (8-bit) | 15 | 1 B | big | unsigned | raw | kPa | 23 … 255 (57758) | medium | a coarse MAP, r = 0.995 against the 16-bit one; saturates at 255 under high boost, so the 8-bit range is insufficient | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `BARO` | Barometric pressure | 17 | 1 B | big | unsigned | raw | kPa | 100 … 101 (57758) | medium | two integer points on two days (1006 hPa→100, 1009 hPa→101); VSA `4005[21]` carries the same value | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `VEHICLE_SPEED` | Vehicle speed | 18 | 1 B | big | unsigned | raw | km/h | 0 … 137 (57758) | high | verified 0–114 km/h; the 0.621 slope against the tool's mph column is exactly the unit conversion | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `LOAD_ALT` | Engine load (candidate) | 19 | 1 B | big | unsigned | raw × 0.7615 + 2.46 | flashpro_AIRC_unit | 2.46 … 187.5045 (57758) | low / candidate | r = 0.98 against air charge, nature undetermined. It is currently the single best gating proxy for `2610[39]`, but very likely derives from the same internal load quantity, so it is not independent evidence | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `IGN_ADVANCE` | Ignition advance | 21 | 1 B | big | unsigned | raw × 0.5 − 64 | deg | -42 … 43.5 (57758) | high | matches the tuning tool's ignition advance column | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `BATTERY_V` | Battery voltage | 22 | 1 B | big | unsigned | raw × 0.1 | V | 6 … 14.7 (57758) | high | 96% of samples agree point for point with the tuning tool | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `INJ_PULSE` | Injector pulse width | 24 | 2 B | big | unsigned | raw × 0.001 | ms | 0 … 39.251 (57758) | high | matches the tuning tool's injector pulse width column | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `FUEL_PUMP_DUTY` | Fuel pump duty | 26 | 2 B | big | unsigned | raw × 0.1111111111111111 | % | 4.444444444 … 111.111111111 (57758) | medium | stands in a 10/9 normalised relation to another channel, which looks more like a pump duty cycle than a low-side fuel pressure | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `AC_REQUEST` | A/C request | 32 | 2 bit (mask 0x3) | big | unsigned | raw & 0x3 | bool | 0 … 3 (57758) | medium | takes 0x00 / 0x01 / 0x03 in the archive: 0x01 with the key on and the engine off, 0x03 about 5 s after start. bit1 is exactly the bit the public signal set points at, **but nobody ever marked the A/C switch, so this stays a candidate** | cross-check against public signal sets (2026-09-14); bit-order correction (2026-09-20) |
+| `AIRFLOW` | Mass air flow | 34 | 2 B | big | unsigned | raw × 0.01 | g/s | 0 … 231.44 (57758) | high | r = 0.99996 against the relation AFM.c = 30000·AFM/RPM | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `ECT2` | Radiator-side coolant temperature (candidate) | 38 | 1 B | big | unsigned | raw − 40 | degC | 28 … 89 (57758) | medium | The H020 ROM reads s16[D000023E] with the same temperature conversion as ECT/IAT. Archived HDS ECT2A and FL5 ECT2 circuitry support a radiator-side coolant candidate: medium confidence. Independent probe calibration and current-software applicability remain unverified. | static review of this FL5 H020 pre-unlock image and quantization checks against archived captures (2026-10-08) |
+| `BOOST_LOAD_STATE` | Boost load state | 39 | 1 B | big | unsigned | raw | enum | 0 … 2 (57758) | medium | re-checked over the whole archive (31 logs, 53,908 samples, 180 state changes): every non-zero state has MAP_ABS ≥ 100.25 kPa. **A single pressure threshold and a Schmitt hysteresis are both refuted**; state 2 has only 8 independent entries, so its threshold is not identifiable | candidate review (2026-09-18); full-archive re-check (2026-09-20) |
 | ↳ enum | 0 = normal, 1 = boosted_load, 2 = high_boost | | | | | | | | | | |
-| `AIR_CHARGE_ALT` | Air charge (8-bit) | 40 | 1 B | big | unsigned | raw × 0.3567 − 0.23 | flashpro_AIRC_unit | -0.23 … 90.7285 (53908) | medium | r = 0.99 against the tuning tool's air-charge column; an 8-bit version of it | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `IAT2` | Intake air temperature 2 | 42 | 1 B | big | unsigned | raw − 40 | degC | 28 … 71 (53908) | high | matches the tuning tool's IAT2 column; the physical location is not inferred from the name | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `OIL_PRESSURE_SENSOR_8BIT` | Engine oil pressure (8-bit) | 43 | 1 B | big | unsigned | raw × 3.921 − 148.5 | kPa | 0.498 … 623.937 (53908) | medium | r = 0.99995 against the 16-bit oil pressure, but **its zero is not zero** (raw = 38 at a true 0 kPa), so it cannot be used as a pressure directly | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `OIL_PRESSURE` | Engine oil pressure | 44 | 2 B | big | unsigned | raw | kPa | 0 … 626 (53908) | high | 2,021 samples at zero engine speed read exactly 0 while the same responses carry BARO = 101 and MAP = 100.3, which rules out a dead sensor; idle readings of 241 / 251 against an in-car 252 support a gauge-pressure reading | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `BATTERY_V_HIRES_CANDIDATE` | Battery voltage (high resolution candidate) | 46 | 2 B | big | unsigned | raw × 0.0025 | V | 6.08 … 14.64 (53908) | low / candidate | ≈ raw/400 resembles battery voltage, but r is only 0.87 and it moves over a span of just 1.1 V | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `MAP_MMHG` | Manifold pressure (mmHg scale) | 48 | 2 B | big | unsigned | raw × 0.1 | mmHg | 173.3 … 1920.1 (53908) | medium | r = 0.994 against MAP; the 0.1 mmHg/LSB unit is an **assumption** | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `AIR_CHARGE_ALT` | Air charge (8-bit) | 40 | 1 B | big | unsigned | raw × 0.3567 − 0.23 | flashpro_AIRC_unit | -0.23 … 90.7285 (57758) | medium | r = 0.99 against the tuning tool's air-charge column; an 8-bit version of it | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `IAT2` | Intake air temperature 2 | 42 | 1 B | big | unsigned | raw − 40 | degC | 28 … 71 (57758) | high | matches the tuning tool's IAT2 column; the physical location is not inferred from the name | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `OIL_PRESSURE_SENSOR_8BIT` | Engine oil pressure (8-bit) | 43 | 1 B | big | unsigned | raw × 3.921 − 148.5 | kPa | 0.498 … 635.7 (57758) | medium | r = 0.99995 against the 16-bit oil pressure, but **its zero is not zero** (raw = 38 at a true 0 kPa), so it cannot be used as a pressure directly | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `OIL_PRESSURE` | Engine oil pressure | 44 | 2 B | big | unsigned | raw | kPa | 0 … 637 (57758) | high | 2,021 samples at zero engine speed read exactly 0 while the same responses carry BARO = 101 and MAP = 100.3, which rules out a dead sensor; idle readings of 241 / 251 against an in-car 252 support a gauge-pressure reading | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `BATTERY_V_HIRES_CANDIDATE` | Battery voltage (high resolution candidate) | 46 | 2 B | big | unsigned | raw × 0.0025 | V | 6.08 … 14.74 (57758) | medium | The H020 ROM shares s16[D0000200] with 2610[22]: high-resolution encoding 8*x, low-resolution floor(6554*x/32768). All 278 same-packet samples differ by 0..0.08 V after decoding, within quantization buckets. Medium confidence; independent voltmeter calibration is unverified. | static review of this FL5 H020 pre-unlock image and quantization checks against archived captures (2026-10-08) |
+| `MAP_MMHG` | Manifold pressure (mmHg scale) | 48 | 2 B | big | unsigned | raw × 0.1 | mmHg | 173.3 … 1920.1 (57758) | medium | r = 0.994 against MAP; the 0.1 mmHg/LSB unit is an **assumption** | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
 
 ### 0x10 ECM/PCM engine control — `0x2611` (63-byte data area)
 
@@ -210,37 +210,37 @@ The ECM's second large packet (combustion / boost / torque), polled alternately 
 
 | Signal | Name | Offset | Width | Endian | Sign | Decoding | Unit | Observed range (n) | Confidence | Evidence | First established by |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `LAMBDA_ALT` | Lambda (alternate) | 6 | 2 B | big | unsigned | raw × 3.0517578e-05 | lambda | 0.991058346 … 1.021087642 (42797) | medium | only ever moves within 0.997–1.016; possibly a second sensor or a filtered value | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `LAMBDA` | Lambda | 8 | 2 B | big | unsigned | raw × 3.0517578e-05 | lambda | 0.764526364 … 1.999969474 (42797) | high | AFR = λ × 14.7; the public signal set decodes the same bytes as ×29.4/65535 = AFR, which agrees | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `SHORT_TRIM` | Short term fuel trim | 10 | 1 B | big | unsigned | raw × 0.78125 − 100 | % | -10.15625 … 17.96875 (42797) | high | exact coefficient 0.78125·raw − 100 recovered from unrounded values | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `LONG_TRIM` | Long term fuel trim | 11 | 1 B | big | unsigned | raw × 0.78125 − 100 | % | -3.125 … 4.6875 (42797) | high | same encoding as short-term trim | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `LAMBDA_CMD` | Lambda target | 12 | 2 B | big | unsigned | raw × 3.0517578e-05 | lambda | 0.897705074 … 1.999969474 (42797) | high | its difference from measured lambda is the error the closed loop is chasing | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `FUEL_STATUS` | Fuel system status | 14 | 1 B | big | unsigned | raw | enum | 2 … 4 (42797) | high | only the values 2 and 4 have been observed | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `PERCENT_UNKNOWN_B15` | Unknown percentage byte 15 | 15 | 1 B | big | unsigned | raw × 0.39215686274509803 | % | 0 … 18.823529412 (42797) | low / candidate | equals an internal channel of the tuning tool that its CSV export does not expose; identity unknown. **It is definitely not purge** | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `CAM_CMD` | Intake cam phase target | 16 | 1 B | big | unsigned | raw × -0.5 + 53 | deg | -22 … 33 (42797) | high | corrected to 53 − 0.5·raw from unrounded values | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `CAM` | Intake cam phase | 17 | 1 B | big | unsigned | raw × -0.5 + 53 | deg | -22.5 … 34.5 (42797) | high | same encoding; its difference from the command shows the VTC response | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `VTS` | VTEC engaged | 18 | 1 bit (mask 0x1) | big | unsigned | raw & 0x1 | bool | 0 … 1 (42797) | high | 0/2 = off, 1/3 = on (bit0) | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `GEAR` | Gear | 19 | 1 B | big | unsigned | raw | gear | 0 … 6 (42797) | high | 96% agreement with the speed/rpm ratio while driving; 0 means neutral or clutch depressed. **The reverse value has never been seen** — selecting reverse still reads 0 | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `PEDAL` | Accelerator pedal | 20 | 2 B | big | unsigned | raw × 0.005 | % | 0 … 60.825 (42797) | high | accelerator **pedal** position, distinct from throttle | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `THROTTLE` | Throttle position | 22 | 2 B | big | unsigned | raw × 0.005 | % | 0.02 … 99.975 (42797) | high | actual electronic throttle position; it does not track the pedal one to one | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `BOOST_PRESSURE` | Boost pressure (absolute) | 24 | 2 B | big | unsigned | raw × 0.013157894736842105 | kPa_abs | 94.513157895 … 215.078947368 (42797) | high | pressure ahead of the throttle, different from MAP at idle; up to 202–215 kPa absolute while driving | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `BOOST_CMD` | Boost pressure target | 26 | 2 B | big | unsigned | raw × 0.013157894736842105 | kPa_abs | 24.618421053 … 233.684210526 (42797) | high | the target, same encoding | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `WASTEGATE` | Wastegate position | 28 | 2 B | big | signed | raw × 0.001 | mm? | -0.176 … 8.412 (42797) | high | **signed**: of 42,797 samples, 41,971 are ≤9000 and 826 are ≥65000, with nothing in between; 34 adjacent-sample transitions cross the sign boundary and read as >30000 jumps unsigned but as zero jumps signed | independent re-derivation from the tuning tool's export; re-classified as signed by the bit-level coverage map and confidence review (2026-09-19) |
-| `WASTEGATE_CMD` | Wastegate position target | 30 | 2 B | big | unsigned | raw × 0.001 | mm? | 0 … 8 (42797) | high | never negative, so it is still read unsigned; the millimetre unit is unproven | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `AIRC` | Air charge | 32 | 2 B | big | unsigned | raw × 0.0234375 | % | 12.6796875 … 192.1171875 (42797) | high | the ECU's primary load quantity, reaching 218% under boost. **It must not be mapped onto OBD calculated load** | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `EXCAM` | Exhaust cam phase | 34 | 1 B | big | unsigned | raw × 0.2 − 23 | deg | -23 … 22.4 (42797) | high | coefficient 0.2·raw − 23 recovered from unrounded values | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `EXCAM_CMD` | Exhaust cam phase target | 35 | 1 B | big | unsigned | raw × 0.2 − 23 | deg | -23 … 21.8 (42797) | high | same encoding | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `CAT_TEMP` | Catalyst temperature | 36 | 2 B | big | unsigned | raw × 0.083333 | degC | 278.998884 … 766.163602 (42797) | high | an ECU model value; observed 303–766 °C | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `DI_FUEL_PRESSURE` | Direct injection fuel pressure | 38 | 2 B | big | unsigned | raw × 10 | kPa | 4290 … 20980 (42797) | high | actual direct-injection rail pressure, 43.5–200 bar; an earlier swap with the commanded value was corrected | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `OIL_PRESSURE_MIRROR` | Engine oil pressure (mirror) | 40 | 2 B | big | unsigned | raw | kPa | 58 … 621 (42797) | high | the same quantity as in `2610` sampled at a different instant (pairs agree exactly only 79.9% of the time) | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `PTANK` | Unresolved pressure quantity (PTANK) | 42 | 2 B | big | unsigned | raw × 0.0077089115016959605 | unresolved | 221.160962072 … 296.014492754 (42797) | medium | the numbers look like kPa (221–296) but are implausible for tank pressure, and they correlate strongly with the air-charge limits — a limit or model quantity. **Do not read it as fuel tank pressure** | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `DI_FUEL_PRESSURE_CMD` | Direct injection fuel pressure target | 44 | 2 B | big | unsigned | raw × 0.5 | kPa | 4355.5 … 20000 (42797) | high | r = 0.99997 against the actual value | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `TORQUE_REQ` | Requested torque | 46 | 1 B | big | unsigned | raw × 0.39215686274509803 | % | 0 … 70.980392157 (42797) | high | a normalised percentage; the reference torque is unknown, so it cannot be converted to N·m | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `TORQUE_ACT` | Actual torque | 47 | 1 B | big | unsigned | raw × 0.39215686274509803 | % | 0 … 64.705882353 (42797) | high | same as above | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `TORQUE_MAX` | Maximum torque (unit undetermined) | 48 | 1 B | big | unsigned | raw × 6.0024 | unresolved | 198.0792 … 276.1104 (42797) | medium | probably the torque ceiling for the current conditions; unit undetermined | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `AIRC_MAX` | Air charge limit | 49 | 1 B | big | unsigned | raw × 6.0024 | % | 150.06 … 270.108 (42797) | medium | `[49]` / `[57]` / `[58]` are equal at all times, so the three names are **indistinguishable** in this data | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `AIRC_PROT` | Air charge protection limit | 57 | 1 B | big | unsigned | raw × 6.0024 | % | 150.06 … 276.1104 (42797) | medium | same as above | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
-| `AIRC_COMP` | Air charge compensation limit | 58 | 1 B | big | unsigned | raw × 6.0024 | % | 150.06 … 276.1104 (42797) | medium | same as above | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `LAMBDA_ALT` | Lambda (alternate) | 6 | 2 B | big | unsigned | raw × 3.0517578e-05 | lambda | 0.991058346 … 1.021087642 (44170) | medium | only ever moves within 0.997–1.016; possibly a second sensor or a filtered value | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `LAMBDA` | Lambda | 8 | 2 B | big | unsigned | raw × 3.0517578e-05 | lambda | 0.764526364 … 1.999969474 (44170) | high | AFR = λ × 14.7; the public signal set decodes the same bytes as ×29.4/65535 = AFR, which agrees | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `SHORT_TRIM` | Short term fuel trim | 10 | 1 B | big | unsigned | raw × 0.78125 − 100 | % | -10.15625 … 17.96875 (44170) | high | exact coefficient 0.78125·raw − 100 recovered from unrounded values | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `LONG_TRIM` | Long term fuel trim | 11 | 1 B | big | unsigned | raw × 0.78125 − 100 | % | -3.125 … 4.6875 (44170) | high | same encoding as short-term trim | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `LAMBDA_CMD` | Lambda target | 12 | 2 B | big | unsigned | raw × 3.0517578e-05 | lambda | 0.897705074 … 1.999969474 (44170) | high | its difference from measured lambda is the error the closed loop is chasing | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `FUEL_STATUS` | Fuel system status | 14 | 1 B | big | unsigned | raw | enum | 0 … 4 (44170) | high | only the values 2 and 4 have been observed | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `PERCENT_UNKNOWN_B15` | Unknown percentage byte 15 | 15 | 1 B | big | unsigned | raw × 0.39215686274509803 | % | 0 … 18.823529412 (44170) | low / candidate | equals an internal channel of the tuning tool that its CSV export does not expose; identity unknown. **It is definitely not purge** | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `CAM_CMD` | Intake cam phase target | 16 | 1 B | big | unsigned | raw × -0.5 + 53 | deg | -22 … 33 (44170) | high | corrected to 53 − 0.5·raw from unrounded values | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `CAM` | Intake cam phase | 17 | 1 B | big | unsigned | raw × -0.5 + 53 | deg | -23 … 34.5 (44170) | high | same encoding; its difference from the command shows the VTC response | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `VTS` | VTEC engaged | 18 | 1 bit (mask 0x1) | big | unsigned | raw & 0x1 | bool | 0 … 1 (44170) | high | 0/2 = off, 1/3 = on (bit0) | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `GEAR` | Gear | 19 | 1 B | big | unsigned | raw | gear | 0 … 6 (44170) | high | 96% agreement with the speed/rpm ratio while driving; 0 means neutral or clutch depressed. **The reverse value has never been seen** — selecting reverse still reads 0 | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `PEDAL` | Accelerator pedal | 20 | 2 B | big | unsigned | raw × 0.005 | % | 0 … 60.825 (44170) | high | accelerator **pedal** position, distinct from throttle | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `THROTTLE` | Throttle position | 22 | 2 B | big | unsigned | raw × 0.005 | % | 0.02 … 99.975 (44170) | high | actual electronic throttle position; it does not track the pedal one to one | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `BOOST_PRESSURE` | Boost pressure (absolute) | 24 | 2 B | big | unsigned | raw × 0.013157894736842105 | kPa_abs | 94.513157895 … 253.144736842 (44170) | high | pressure ahead of the throttle, different from MAP at idle; up to 202–215 kPa absolute while driving | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `BOOST_CMD` | Boost pressure target | 26 | 2 B | big | unsigned | raw × 0.013157894736842105 | kPa_abs | 24.618421053 … 277.223684211 (44170) | high | the target, same encoding | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `WASTEGATE` | Wastegate position | 28 | 2 B | big | signed | raw × 0.001 | mm? | -0.176 … 8.466 (44170) | high | **signed**: of 42,797 samples, 41,971 are ≤9000 and 826 are ≥65000, with nothing in between; 34 adjacent-sample transitions cross the sign boundary and read as >30000 jumps unsigned but as zero jumps signed | independent re-derivation from the tuning tool's export; re-classified as signed by the bit-level coverage map and confidence review (2026-09-19) |
+| `WASTEGATE_CMD` | Wastegate position target | 30 | 2 B | big | unsigned | raw × 0.001 | mm? | 0 … 8 (44170) | high | never negative, so it is still read unsigned; the millimetre unit is unproven | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `AIRC` | Air charge | 32 | 2 B | big | unsigned | raw × 0.0234375 | % | 12.6796875 … 228.1171875 (44170) | high | the ECU's primary load quantity, reaching 218% under boost. **It must not be mapped onto OBD calculated load** | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `EXCAM` | Exhaust cam phase | 34 | 1 B | big | unsigned | raw × 0.2 − 23 | deg | -23 … 22.4 (44170) | high | coefficient 0.2·raw − 23 recovered from unrounded values | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `EXCAM_CMD` | Exhaust cam phase target | 35 | 1 B | big | unsigned | raw × 0.2 − 23 | deg | -23 … 21.8 (44170) | high | same encoding | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `CAT_TEMP` | Catalyst temperature | 36 | 2 B | big | unsigned | raw × 0.083333 | degC | 61.166422 … 766.163602 (44170) | high | an ECU model value; observed 303–766 °C | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `DI_FUEL_PRESSURE` | Direct injection fuel pressure | 38 | 2 B | big | unsigned | raw × 10 | kPa | 510 … 20980 (44170) | high | actual direct-injection rail pressure, 43.5–200 bar; an earlier swap with the commanded value was corrected | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `OIL_PRESSURE_MIRROR` | Engine oil pressure (mirror) | 40 | 2 B | big | unsigned | raw | kPa | 0 … 637 (44170) | high | the same quantity as in `2610` sampled at a different instant (pairs agree exactly only 79.9% of the time) | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `PTANK` | Unresolved pressure quantity (PTANK) | 42 | 2 B | big | unsigned | raw × 0.0077089115016959605 | unresolved | 221.160962072 … 296.014492754 (44170) | medium | the numbers look like kPa (221–296) but are implausible for tank pressure, and they correlate strongly with the air-charge limits — a limit or model quantity. **Do not read it as fuel tank pressure** | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `DI_FUEL_PRESSURE_CMD` | Direct injection fuel pressure target | 44 | 2 B | big | unsigned | raw × 0.5 | kPa | 612 … 20000 (44170) | high | r = 0.99997 against the actual value | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `TORQUE_REQ` | Requested torque | 46 | 1 B | big | unsigned | raw × 0.39215686274509803 | % | 0 … 72.156862745 (44170) | high | a normalised percentage; the reference torque is unknown, so it cannot be converted to N·m | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `TORQUE_ACT` | Actual torque | 47 | 1 B | big | unsigned | raw × 0.39215686274509803 | % | 0 … 72.941176471 (44170) | high | same as above | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `TORQUE_MAX` | Maximum torque (unit undetermined) | 48 | 1 B | big | unsigned | raw × 6.0024 | unresolved | 198.0792 … 300.12 (44170) | medium | probably the torque ceiling for the current conditions; unit undetermined | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `AIRC_MAX` | Air charge limit | 49 | 1 B | big | unsigned | raw × 6.0024 | % | 150.06 … 270.108 (44170) | medium | `[49]` / `[57]` / `[58]` are equal at all times, so the three names are **indistinguishable** in this data | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `AIRC_PROT` | Air charge protection limit | 57 | 1 B | big | unsigned | raw × 6.0024 | % | 150.06 … 282.1128 (44170) | medium | same as above | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
+| `AIRC_COMP` | Air charge compensation limit | 58 | 1 B | big | unsigned | raw × 6.0024 | % | 150.06 … 282.1128 (44170) | medium | same as above | independent re-derivation from the tuning tool's unrounded datalog export; session 5 (2026-09-12) |
 
 ### 0x10 ECM/PCM engine control — `0x2660` (54-byte data area)
 
@@ -248,8 +248,8 @@ ECM odometer and run time.
 
 | Signal | Name | Offset | Width | Endian | Sign | Decoding | Unit | Observed range (n) | Confidence | Evidence | First established by |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `ODOMETER` | Odometer | 43 | 3 B | big | unsigned | raw | km | withheld (365) | high | checked against the cluster reading | session 2 (2026-09-10), checked against the cluster odometer |
-| `ENGINE_RUNTIME` | Engine run time | 46 | 2 B | big | unsigned | raw | s | 87 … 2232 (365) | medium | taken from the public signal set; not independently verified here | session 2 (2026-09-10), checked against the cluster odometer |
+| `ODOMETER` | Odometer | 43 | 3 B | big | unsigned | raw | km | withheld (460) | high | checked against the cluster reading | session 2 (2026-09-10), checked against the cluster odometer |
+| `ENGINE_RUNTIME` | Engine run time | 46 | 2 B | big | unsigned | raw | s | 0 … 2232 (460) | medium | The H020 ROM shares index 0x1A, u32[D0003884], and conversion with 2665[8:10]; output is clamped to unsigned 16-bit range. Same source confirmed; medium confidence retained. Seconds timebase, reset conditions and runtime gating remain unverified; do not assume 16-bit rollover. | static review of this FL5 H020 pre-unlock image and quantization checks against archived captures (2026-10-08) |
 
 ### 0x10 ECM/PCM engine control — `0x2662` (54-byte data area)
 
@@ -257,10 +257,10 @@ ECM knock and catalyst miscellany.
 
 | Signal | Name | Offset | Width | Endian | Sign | Decoding | Unit | Observed range (n) | Confidence | Evidence | First established by |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `KNOCK_CONTROL` | Knock control | 10 | 1 B | big | unsigned | raw × 0.00784313725490196 | scalar | 0 … 0 (365) | medium | taken from the public signal set; not independently verified here | cross-check against public signal sets (2026-09-14); session 2 (2026-09-10) |
-| `CAT_TEMP_MIRROR` | Catalyst temperature (mirror) | 12 | 2 B | big | unsigned | raw × 0.083333 | degC | 303.582119 … 651.997392 (365) | high | r = 1.000 against the catalyst temperature in `2611` | cross-check against public signal sets (2026-09-14); session 2 (2026-09-10) |
-| `VTC_DUTY` | VTC actuator duty | 28 | 1 B | big | unsigned | raw × 0.39215686274509803 | % | 5.882352941 … 55.294117647 (365) | medium | adopted from the public signal set; on this car the raw value moves over 15..123 with engine speed. It was once mis-read as a coolant temperature duplicate | adopted from public signal sets (2026-09-14); raw value tracks engine speed on this car |
-| `UNKNOWN_B39` | Unknown byte 39 | 39 | 1 B | big | unsigned | raw | ? | 71 … 73 (365) | low / candidate | once mis-read as coolant temperature: it stayed at 73 while coolant went 73→80 °C, which rules that out. Nature unknown | cross-check against public signal sets (2026-09-14); session 2 (2026-09-10) |
+| `KNOCK_CONTROL` | Knock control | 10 | 1 B | big | unsigned | raw × 0.00784313725490196 | scalar | 0 … 0 (460) | medium | taken from the public signal set; not independently verified here | cross-check against public signal sets (2026-09-14); session 2 (2026-09-10) |
+| `CAT_TEMP_MIRROR` | Catalyst temperature (mirror) | 12 | 2 B | big | unsigned | raw × 0.083333 | degC | 61.166422 … 688.663912 (460) | high | r = 1.000 against the catalyst temperature in `2611` | cross-check against public signal sets (2026-09-14); session 2 (2026-09-10) |
+| `VTC_DUTY` | VTC actuator duty | 28 | 1 B | big | unsigned | raw × 0.39215686274509803 | % | 0 … 55.68627451 (460) | medium | adopted from the public signal set; on this car the raw value moves over 15..123 with engine speed. It was once mis-read as a coolant temperature duplicate | adopted from public signal sets (2026-09-14); raw value tracks engine speed on this car |
+| `UNKNOWN_B39` | Unknown byte 39 | 39 | 1 B | big | unsigned | raw | ? | 68 … 80 (460) | low / candidate | once mis-read as coolant temperature: it stayed at 73 while coolant went 73→80 °C, which rules that out. Nature unknown | cross-check against public signal sets (2026-09-14); session 2 (2026-09-10) |
 
 ### 0x10 ECM/PCM engine control — `0x2665` (54-byte data area)
 
@@ -268,7 +268,7 @@ Run-time duplicate, found while reviewing the ECM DIDs that were still unexplain
 
 | Signal | Name | Offset | Width | Endian | Sign | Decoding | Unit | Observed range (n) | Confidence | Evidence | First established by |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `ENGINE_RUNTIME_COPY` | Engine run time (copy) | 8 | 2 B | big | unsigned | raw | s | 95 … 2232 (1017) | medium | equal sample by sample to the run time in `2660` (250/278; the rest differ by 1 s across a second boundary) | offline review of the remaining ECM DIDs (2026-09-13) |
+| `ENGINE_RUNTIME_COPY` | Engine run time (copy) | 8 | 2 B | big | unsigned | raw | s | 0 … 2232 (1112) | medium | The H020 ROM confirms the same index 0x1A, u32[D0003884], conversion and unsigned 16-bit clamping as 2660[46:48]. Of 278 historical asynchronous samples, 250 match and the rest differ by 1. Medium confidence; timebase and reset conditions remain unverified. | static review of this FL5 H020 pre-unlock image and quantization checks against archived captures (2026-10-08) |
 
 ### 0x10 ECM/PCM engine control — `0x267E` (68-byte data area)
 
@@ -276,7 +276,7 @@ A long 68-byte response; only one 8-bit high-byte duplicate is identified.
 
 | Signal | Name | Offset | Width | Endian | Sign | Decoding | Unit | Observed range (n) | Confidence | Evidence | First established by |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `PTANK_HI8` | Unresolved pressure quantity (high byte) | 11 | 1 B | big | unsigned | raw × 1.973481344434166 | unresolved | 228.923835954 … 294.048720321 (1017) | low / candidate | equals the high byte of the 16-bit PTANK raw value (273/278) | offline review of the remaining ECM DIDs (2026-09-13) |
+| `PTANK_HI8` | Unresolved pressure quantity (high byte) | 11 | 1 B | big | unsigned | raw × 1.973481344434166 | unresolved | 228.923835954 … 294.048720321 (1112) | low / candidate | equals the high byte of the 16-bit PTANK raw value (273/278) | offline review of the remaining ECM DIDs (2026-09-13) |
 
 ### 0x10 ECM/PCM engine control — `0x267F` (10-byte data area)
 
@@ -284,7 +284,7 @@ A short 10-byte response; one byte duplicates the air-charge limit from `2611`.
 
 | Signal | Name | Offset | Width | Endian | Sign | Decoding | Unit | Observed range (n) | Confidence | Evidence | First established by |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `AIRC_MAX_COPY` | Air charge limit (copy) | 5 | 1 B | big | unsigned | raw × 6.0024 | % | 156.0624 … 264.1056 (364) | low / candidate | raw byte equal to `2611[49]` sample by sample (264/278) | offline review of the remaining ECM DIDs (2026-09-13) |
+| `AIRC_MAX_COPY` | Air charge limit (copy) | 5 | 1 B | big | unsigned | raw × 6.0024 | % | 156.0624 … 264.1056 (459) | low / candidate | raw byte equal to `2611[49]` sample by sample (264/278) | offline review of the remaining ECM DIDs (2026-09-13) |
 
 ### 0x10 ECM/PCM engine control — `0x2683` (54-byte data area)
 
@@ -292,7 +292,7 @@ Timer packet A. The start event and the overflow behaviour are both unknown; res
 
 | Signal | Name | Offset | Width | Endian | Sign | Decoding | Unit | Observed range (n) | Confidence | Evidence | First established by |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `TIMER_A` | Timer A | 28 | 2 B | big | unsigned | raw × 0.1 | s | 237.5 … 6202.8 (1017) | low / candidate | monotonic, starting about 81 s later than engine run time; the start event is unknown | offline review of the remaining ECM DIDs (2026-09-13) |
+| `TIMER_A` | Timer A | 28 | 2 B | big | unsigned | raw × 0.1 | s | 165.3 … 6436.4 (1111) | low / candidate | monotonic, starting about 81 s later than engine run time; the start event is unknown | offline review of the remaining ECM DIDs (2026-09-13) |
 
 ### 0x10 ECM/PCM engine control — `0x2689` (54-byte data area)
 
@@ -300,16 +300,16 @@ Timer packet B, started by a different event than timer A.
 
 | Signal | Name | Offset | Width | Endian | Sign | Decoding | Unit | Observed range (n) | Confidence | Evidence | First established by |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `TIMER_B` | Timer B | 12 | 2 B | big | unsigned | raw × 0.1 | s | 121.6 … 3550.4 (363) | low / candidate | monotonic, starting about 197 s later than run time — a different event from timer A | offline review of the remaining ECM DIDs (2026-09-13) |
-| `TIMER_B_DUP` | Timer B (duplicate position) | 16 | 2 B | big | unsigned | raw × 0.1 | s | 121.6 … 3550.4 (363) | low / candidate | byte-for-byte identical to `[12:14]` throughout; listed only to mark the position | offline review of the remaining ECM DIDs (2026-09-13) |
+| `TIMER_B` | Timer B | 12 | 2 B | big | unsigned | raw × 0.1 | s | 0.7 … 6509.7 (457) | low / candidate | monotonic, starting about 197 s later than run time — a different event from timer A | offline review of the remaining ECM DIDs (2026-09-13) |
+| `TIMER_B_DUP` | Timer B (duplicate position) | 16 | 2 B | big | unsigned | raw × 0.1 | s | 0.7 … 6509.7 (457) | low / candidate | byte-for-byte identical to `[12:14]` throughout; listed only to mark the position | offline review of the remaining ECM DIDs (2026-09-13) |
 
 ### 0x10 ECM/PCM engine control — `0x268F` (54-byte data area)
 
-The oil-temperature packet. **This one has no precedent anywhere in public sources** and is the item most in need of verification on a stock car. Another 25 bytes in this response are live; their structure has been analysed but none of them is named — see the unmapped-bytes section.
+This packet contains the observed FL5 oil-temperature candidate. Static review of the pre-unlock image supports a computed source for byte 15; the computation rules are not published. Physical identity and LogR correspondence remain unverified. The previous absolute claim of no public precedent is withdrawn. Other changing bytes retain structural evidence only, without invented physical names.
 
 | Signal | Name | Offset | Width | Endian | Sign | Decoding | Unit | Observed range (n) | Confidence | Evidence | First established by |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `OIL_TEMP_MODEL` | Engine oil temperature (ECU model) | 15 | 1 B | big | unsigned | raw − 40 | degC | 32 … 82 (20684) | high | an ECU model value. Matches the cluster point for point over 54→67 °C; the in-car display showed 54 °C where the bus read 55 °C; warm-up is continuous over 32→81 °C. **No precedent in any public source**; the model algorithm, the sensor arrangement and the start-up display threshold are all unverified | session 2 (2026-09-10), cluster 54→67 °C point by point; session 5 (2026-09-12), in-car display 54 °C vs 55 °C on the bus |
+| `OIL_TEMP_MODEL` | Engine oil temperature (model candidate) | 15 | 1 B | big | unsigned | raw − 40 | degC | 29 … 82 (20989) | high | An observed OBD oil-temperature candidate on this FL5. Static review of the pre-unlock image supports a computed source for byte 15, but the computation rules are private research and are not published; physical oil-temperature identity and LogR correspondence remain unverified. The driver observed low readings when cold, convergence, then higher readings; screen-reading delay does not explain away that observation. Historical marks are not continuous synchronized validation; FK8 material is analogy only. | static review of this FL5 H020 pre-unlock image and quantization checks against archived captures (2026-10-08) |
 
 ### 0x28 VSA stability control (ABS/ESC) — `0x4001` (56-byte data area)
 
@@ -317,10 +317,10 @@ VSA longitudinal acceleration plus yaw and steering-angle duplicates.
 
 | Signal | Name | Offset | Width | Endian | Sign | Decoding | Unit | Observed range (n) | Confidence | Evidence | First established by |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `STEER_ANGLE_COPY` | Steering wheel angle (copy) | 20 | 2 B | big | unsigned | raw × 1.04 − 1170 | deg | -396.24 … 399.36 (3965) | low / candidate | r = 0.96 against the steering angle in `48BD` | session 7 (2026-09-15), event-outlier analysis re-run over session 4 data as well |
-| `YAW_RATE_U8` | Yaw rate (8-bit copy) | 50 | 1 B | big | unsigned | raw × 1.17 − 146.25 | deg/s | -54.99 … 40.95 (3965) | low / candidate | an 8-bit copy of `48C0` (same source, so it cannot cross-validate it) | session 7 (2026-09-15), event-outlier analysis re-run over session 4 data as well |
-| `LATERAL_G_VSA_CANDIDATE` | Lateral acceleration (VSA candidate) | 51 | 1 B | big | unsigned | raw × 0.02 − 2.5 | g? | -0.66 … 0.36 (3965) | low / candidate | best r = 0.873 against a speed × yaw-rate model. It is **an independent lateral channel**, not a sample-by-sample mirror of the EPS one; back-solving the yaw scale from each of the two gives results 35% apart, so at least one of the two scales is wrong | candidate review (2026-09-18); full-archive re-check of the G / yaw scales (2026-09-20) |
-| `LONGITUDINAL_G` | Longitudinal acceleration | 52 | 1 B | big | unsigned | raw × 0.02 − 2.5 | g | -0.44 … 0.46 (3965) | medium | zero at raw = 125; r = 0.67–0.83 against acceleration differentiated from wheel speed, free slope 1.039, residual 0.030 g. **Only one trip sampled wheel speed fast enough to compute dv/dt** | session 7 (2026-09-15), event-outlier analysis; full-archive re-check of the G / yaw scales (2026-09-20) |
+| `STEER_ANGLE_COPY` | Steering wheel angle (copy) | 20 | 2 B | big | unsigned | raw × 1.04 − 1170 | deg | -396.24 … 399.36 (6168) | low / candidate | r = 0.96 against the steering angle in `48BD` | session 7 (2026-09-15), event-outlier analysis re-run over session 4 data as well |
+| `YAW_RATE_U8` | Yaw rate (8-bit copy) | 50 | 1 B | big | unsigned | raw × 1.04 − 130 | deg/s | -48.88 … 38.48 (6168) | low / candidate | an 8-bit copy of `48C0` (same source, so it cannot cross-validate it); rescaled to 1.04 °/s/LSB together with `48C0` | session 7 (2026-09-15), event-outlier analysis re-run over session 4 data as well |
+| `LATERAL_G_VSA_CANDIDATE` | Lateral acceleration (VSA candidate) | 51 | 1 B | big | unsigned | raw × 0.02 − 2.5 | g? | -0.66 … 0.36 (6168) | medium | best r = 0.873 against a speed × yaw-rate model. It is an independent lateral channel, not a sample-by-sample mirror of the EPS one; their ratio is about 4.0–4.8, so the earlier «35% apart, at least one scale is wrong» is no longer supported but not ruled out; no external g reference | candidate review (2026-09-18); full-archive re-check of the G / yaw scales (2026-09-20); offline body-dynamics calibration across the archive (2026-09-28) |
+| `LONGITUDINAL_G` | Longitudinal acceleration | 52 | 1 B | big | unsigned | raw × 0.02 − 2.5 | g | -0.72 … 0.46 (6168) | medium | zero at raw = 125; r = 0.67–0.83 against acceleration differentiated from wheel speed, free slope 1.039, residual 0.030 g. **Only one trip sampled wheel speed fast enough to compute dv/dt** | session 7 (2026-09-15), event-outlier analysis; full-archive re-check of the G / yaw scales (2026-09-20) |
 
 ### 0x28 VSA stability control (ABS/ESC) — `0x4004` (56-byte data area)
 
@@ -328,11 +328,11 @@ VSA brake switch and the coarse (1.5 km/h) wheel speeds.
 
 | Signal | Name | Offset | Width | Endian | Sign | Decoding | Unit | Observed range (n) | Confidence | Evidence | First established by |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `WHEEL_SPEED_FL_VSA` | Wheel speed front left (VSA, coarse) | 8 | 1 B | big | unsigned | raw × 1.5 | km/h | 0 … 114 (3339) | medium | 1.5 km/h per LSB; **the wheel order is inferred from the EPS packet**, not independently confirmed | session 3 (2026-09-10); cross-check against public signal sets (2026-09-14) |
-| `WHEEL_SPEED_FR_VSA` | Wheel speed front right (VSA, coarse) | 9 | 1 B | big | unsigned | raw × 1.5 | km/h | 0 … 114 (3339) | medium | same as above | session 3 (2026-09-10); cross-check against public signal sets (2026-09-14) |
-| `WHEEL_SPEED_RL_VSA` | Wheel speed rear left (VSA, coarse) | 10 | 1 B | big | unsigned | raw × 1.5 | km/h | 0 … 114 (3339) | medium | same as above | session 3 (2026-09-10); cross-check against public signal sets (2026-09-14) |
-| `WHEEL_SPEED_RR_VSA` | Wheel speed rear right (VSA, coarse) | 11 | 1 B | big | unsigned | raw × 1.5 | km/h | 0 … 114 (3339) | medium | same as above | session 3 (2026-09-10); cross-check against public signal sets (2026-09-14) |
-| `BRAKE_SWITCH` | Brake switch | 15 | 1 bit (mask 0x1) | big | unsigned | raw & 0x1 | bool | 0 … 1 (3339) | medium | agrees with the public signal set once the MSB0 bit numbering is applied: bix 127 is byte 15 bit0 | session 3 (2026-09-10); cross-check against public signal sets (2026-09-14) |
+| `WHEEL_SPEED_FL_VSA` | Wheel speed front left (VSA, coarse) | 8 | 1 B | big | unsigned | raw × 1.5 | km/h | 0 … 127.5 (5739) | medium | 1.5 km/h per LSB; **the wheel order is inferred from the EPS packet**, not independently confirmed | session 3 (2026-09-10); cross-check against public signal sets (2026-09-14) |
+| `WHEEL_SPEED_FR_VSA` | Wheel speed front right (VSA, coarse) | 9 | 1 B | big | unsigned | raw × 1.5 | km/h | 0 … 127.5 (5739) | medium | same as above | session 3 (2026-09-10); cross-check against public signal sets (2026-09-14) |
+| `WHEEL_SPEED_RL_VSA` | Wheel speed rear left (VSA, coarse) | 10 | 1 B | big | unsigned | raw × 1.5 | km/h | 0 … 127.5 (5739) | medium | same as above | session 3 (2026-09-10); cross-check against public signal sets (2026-09-14) |
+| `WHEEL_SPEED_RR_VSA` | Wheel speed rear right (VSA, coarse) | 11 | 1 B | big | unsigned | raw × 1.5 | km/h | 0 … 127.5 (5739) | medium | same as above | session 3 (2026-09-10); cross-check against public signal sets (2026-09-14) |
+| `BRAKE_SWITCH` | Brake switch | 15 | 1 bit (mask 0x1) | big | unsigned | raw & 0x1 | bool | 0 … 1 (5739) | medium | agrees with the public signal set once the MSB0 bit numbering is applied: bix 127 is byte 15 bit0 | session 3 (2026-09-10); cross-check against public signal sets (2026-09-14) |
 
 ### 0x28 VSA stability control (ABS/ESC) — `0x4005` (56-byte data area)
 
@@ -340,8 +340,8 @@ VSA brake pressure. Verified at two points against the in-car display.
 
 | Signal | Name | Offset | Width | Endian | Sign | Decoding | Unit | Observed range (n) | Confidence | Evidence | First established by |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `BRAKE_PRESSURE` | Brake master cylinder pressure | 7 | 2 B | big | unsigned | raw − 25 | bar | 0 … 106 (4840) | high | 0 at rest; the in-car display's 5 MPa and 10 MPa correspond to 50 bar and 106 bar here (about 6% apart, kept as-is) | session 2 (2026-09-10), two measured points against the in-car display |
-| `BARO_MIRROR` | Barometric pressure (VSA mirror) | 21 | 1 B | big | unsigned | raw | kPa | 101 … 101 (4840) | medium | same value as `2610[17]` | session 2 (2026-09-10), two measured points against the in-car display |
+| `BRAKE_PRESSURE` | Brake master cylinder pressure | 7 | 2 B | big | unsigned | raw − 25 | bar | 0 … 106 (7308) | high | 0 at rest; the in-car display's 5 MPa and 10 MPa correspond to 50 bar and 106 bar here (about 6% apart, kept as-is) | session 2 (2026-09-10), two measured points against the in-car display |
+| `BARO_MIRROR` | Barometric pressure (VSA mirror) | 21 | 1 B | big | unsigned | raw | kPa | 101 … 101 (7308) | medium | same value as `2610[17]` | session 2 (2026-09-10), two measured points against the in-car display |
 
 ### 0x28 VSA stability control (ABS/ESC) — `0x4007` (56-byte data area)
 
@@ -349,12 +349,12 @@ VSA clutch / reverse / Brake Hold / seatbelt packet. Most bit meanings come from
 
 | Signal | Name | Offset | Width | Endian | Sign | Decoding | Unit | Observed range (n) | Confidence | Evidence | First established by |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `BRAKE_HOLD_HOLDING_CANDIDATE` | Brake Hold actively holding (candidate) | 9 | 1 bit (mask 0x8) | big | unsigned | raw & 0x8 | bool | 0 … 8 (3515) | low / candidate | all 26 set segments occur with Brake Hold enabled; two negative controls (Hold disabled, 559 samples; seatbelt unfastened, 317 samples) produce zero counter-examples. «Clears as soon as the pedal is released» is refuted by counter-example. **There is no independent «currently holding» reference, so it is not promoted** | candidate review (2026-09-18); full-archive re-check (2026-09-20) |
-| `BRAKE_SWITCH_MIRROR` | Brake switch (VSA mirror) | 9 | 1 bit (mask 0x4) | big | unsigned | raw & 0x4 | bool | 0 … 4 (3515) | medium | **not a clean mirror of the brake switch**: `[9]` only ever takes 0 / 4 / 12 and never 8, and what holds is «bit2 = pedal OR bit3». While bit3 is set, bit2 does not fall back when the pedal is released — using it as a brake indicator will keep the indicator lit throughout a Brake Hold | candidate review (2026-09-18); full-archive re-check (2026-09-20) |
-| `REVERSE_GEAR` | Reverse gear engaged | 11 | 1 bit (mask 0x2) | big | unsigned | raw & 0x2 | bool | 0 … 2 (3515) | high | four transitions across two reversing manoeuvres while driving, plus a 30 s stationary segment held in reverse | session 4, two reversing manoeuvres while driving; session 7, a 30 s stationary segment in reverse |
-| `SEATBELT_DRIVER` | Driver seatbelt fastened | 17 | 1 bit (mask 0x20) | big | unsigned | raw & 0x20 | bool | 0 … 32 (3515) | high | two independent unfasten / fasten actions: cleared on unfasten, set on fasten | session 8 (2026-09-16), stationary segment 5; startup-sequence review (2026-09-18) |
-| `BRAKE_HOLD_ACTIVE` | Brake Hold enabled | 21 | 1 bit (mask 0x2) | big | unsigned | raw & 0x2 | bool | 0 … 2 (3515) | medium | synchronous with the cluster bit `7021[7] bit7`; **verified by a single stationary press / cancel, needs repeating** | session 7 (2026-09-15), stationary guided action segments; session 8 (2026-09-16), stationary segments |
-| `CLUTCH_PEDAL` | Clutch pedal travel | 24 | 1 B | big | unsigned | raw | % | 0 … 100 (3515) | high | fully separated (0 / 100) across five stationary press-and-release cycles; intermediate values such as 3–36 appear when shifting on the move, so it is **travel in percent**, not a switch | session 7 (2026-09-15), stationary segment 2; session 8 (2026-09-16), gear changes while driving |
+| `BRAKE_HOLD_HOLDING_CANDIDATE` | Brake Hold actively holding (candidate) | 9 | 1 bit (mask 0x8) | big | unsigned | raw & 0x8 | bool | 0 … 8 (5921) | low / candidate | all 26 set segments occur with Brake Hold enabled; two negative controls (Hold disabled, 559 samples; seatbelt unfastened, 317 samples) produce zero counter-examples. «Clears as soon as the pedal is released» is refuted by counter-example. **There is no independent «currently holding» reference, so it is not promoted** | candidate review (2026-09-18); full-archive re-check (2026-09-20) |
+| `BRAKE_SWITCH_MIRROR` | Brake switch (VSA mirror) | 9 | 1 bit (mask 0x4) | big | unsigned | raw & 0x4 | bool | 0 … 4 (5921) | medium | **not a clean mirror of the brake switch**: `[9]` only ever takes 0 / 4 / 12 and never 8, and what holds is «bit2 = pedal OR bit3». While bit3 is set, bit2 does not fall back when the pedal is released — using it as a brake indicator will keep the indicator lit throughout a Brake Hold | candidate review (2026-09-18); full-archive re-check (2026-09-20) |
+| `REVERSE_GEAR` | Reverse gear engaged | 11 | 1 bit (mask 0x2) | big | unsigned | raw & 0x2 | bool | 0 … 2 (5921) | high | four transitions across two reversing manoeuvres while driving, plus a 30 s stationary segment held in reverse | session 4, two reversing manoeuvres while driving; session 7, a 30 s stationary segment in reverse |
+| `SEATBELT_DRIVER` | Driver seatbelt fastened | 17 | 1 bit (mask 0x20) | big | unsigned | raw & 0x20 | bool | 0 … 32 (5921) | high | two independent unfasten / fasten actions: cleared on unfasten, set on fasten | session 8 (2026-09-16), stationary segment 5; startup-sequence review (2026-09-18) |
+| `BRAKE_HOLD_ACTIVE` | Brake Hold enabled | 21 | 1 bit (mask 0x2) | big | unsigned | raw & 0x2 | bool | 0 … 2 (5921) | medium | synchronous with the cluster bit `7021[7] bit7`; **verified by a single stationary press / cancel, needs repeating** | session 7 (2026-09-15), stationary guided action segments; session 8 (2026-09-16), stationary segments |
+| `CLUTCH_PEDAL` | Clutch pedal travel | 24 | 1 B | big | unsigned | raw | % | 0 … 100 (5921) | high | fully separated (0 / 100) across five stationary press-and-release cycles; intermediate values such as 3–36 appear when shifting on the move, so it is **travel in percent**, not a switch | session 7 (2026-09-15), stationary segment 2; session 8 (2026-09-16), gear changes while driving |
 
 ### 0x28 VSA stability control (ABS/ESC) — `0x4009` (56-byte data area)
 
@@ -362,8 +362,8 @@ VSA vehicle speed.
 
 | Signal | Name | Offset | Width | Endian | Sign | Decoding | Unit | Observed range (n) | Confidence | Evidence | First established by |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `EPB_APPLIED` | Electric parking brake applied | 9 | 1 B | big | unsigned | raw | raw | 0 … 175 (2997) | medium | the byte becomes 0xAF when the electric parking brake is applied; **single observation** | session 8 (2026-09-16), stationary segment, single observation |
-| `VEHICLE_SPEED_VSA` | Vehicle speed (VSA) | 32 | 1 B | big | unsigned | raw | km/h | 0 … 114 (2997) | high | integer speed, agrees with the ECM's | session 3 (2026-09-10) |
+| `EPB_APPLIED` | Electric parking brake applied | 9 | 1 B | big | unsigned | raw | raw | 0 … 175 (3090) | medium | the byte becomes 0xAF when the electric parking brake is applied; **single observation** | session 8 (2026-09-16), stationary segment, single observation |
+| `VEHICLE_SPEED_VSA` | Vehicle speed (VSA) | 32 | 1 B | big | unsigned | raw | km/h | 0 … 120 (3090) | high | integer speed, agrees with the ECM's | session 3 (2026-09-10) |
 
 ### 0x30 EPS electric power steering — `0x4818` (56-byte data area)
 
@@ -371,11 +371,11 @@ EPS vehicle speed and wheel speeds as 8-bit integers.
 
 | Signal | Name | Offset | Width | Endian | Sign | Decoding | Unit | Observed range (n) | Confidence | Evidence | First established by |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `VEHICLE_SPEED_COPY` | Vehicle speed (EPS copy) | 15 | 1 B | big | unsigned | raw | km/h | 0 … 114 (1142) | high | EPS-side vehicle speed duplicate (16-bit ×0.01 in `48BD`, 8-bit integer in `4818`) | session 3 (2026-09-10) |
-| `WHEEL_SPEED_FL_8BIT` | Wheel speed front left (8-bit) | 25 | 1 B | big | unsigned | raw | km/h | 0 … 115 (1142) | medium | 1 km/h integer version; wheel order inferred from `48C4` | session 3 (2026-09-10) |
-| `WHEEL_SPEED_FR_8BIT` | Wheel speed front right (8-bit) | 26 | 1 B | big | unsigned | raw | km/h | 0 … 115 (1142) | medium | same as above | session 3 (2026-09-10) |
-| `WHEEL_SPEED_RL_8BIT` | Wheel speed rear left (8-bit) | 27 | 1 B | big | unsigned | raw | km/h | 0 … 115 (1142) | medium | same as above | session 3 (2026-09-10) |
-| `WHEEL_SPEED_RR_8BIT` | Wheel speed rear right (8-bit) | 28 | 1 B | big | unsigned | raw | km/h | 0 … 115 (1142) | medium | same as above | session 3 (2026-09-10) |
+| `VEHICLE_SPEED_COPY` | Vehicle speed (EPS copy) | 15 | 1 B | big | unsigned | raw | km/h | 0 … 124 (1235) | high | EPS-side vehicle speed duplicate (16-bit ×0.01 in `48BD`, 8-bit integer in `4818`) | session 3 (2026-09-10) |
+| `WHEEL_SPEED_FL_8BIT` | Wheel speed front left (8-bit) | 25 | 1 B | big | unsigned | raw | km/h | 0 … 125 (1235) | medium | 1 km/h integer version; wheel order inferred from `48C4` | session 3 (2026-09-10) |
+| `WHEEL_SPEED_FR_8BIT` | Wheel speed front right (8-bit) | 26 | 1 B | big | unsigned | raw | km/h | 0 … 125 (1235) | medium | same as above | session 3 (2026-09-10) |
+| `WHEEL_SPEED_RL_8BIT` | Wheel speed rear left (8-bit) | 27 | 1 B | big | unsigned | raw | km/h | 0 … 124 (1235) | medium | same as above | session 3 (2026-09-10) |
+| `WHEEL_SPEED_RR_8BIT` | Wheel speed rear right (8-bit) | 28 | 1 B | big | unsigned | raw | km/h | 0 … 124 (1235) | medium | same as above | session 3 (2026-09-10) |
 
 ### 0x30 EPS electric power steering — `0x48AC` (56-byte data area)
 
@@ -383,9 +383,9 @@ EPS steering assist mode. This is the **only** drive-mode bit that has been foun
 
 | Signal | Name | Offset | Width | Endian | Sign | Decoding | Unit | Observed range (n) | Confidence | Evidence | First established by |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `STEER_MODE` | Steering assist mode | 1 | 1 B | big | unsigned | raw | enum | 1 … 3 (2083) | high | 1 = comfort, 2 = sport, 3 = +R; a custom mode still reads 1. Consistent across three independent sessions, and the **only** confirmed drive-mode bit | session 7 (2026-09-15), per-segment analysis across a drive-mode sweep |
+| `STEER_MODE` | Steering assist mode | 1 | 1 B | big | unsigned | raw | enum | 1 … 3 (4286) | high | 1 = comfort, 2 = sport, 3 = +R; a custom mode still reads 1. Consistent across three independent sessions, and the **only** confirmed drive-mode bit | session 7 (2026-09-15), per-segment analysis across a drive-mode sweep |
 | ↳ enum | 1 = comfort, 2 = sport, 3 = plusR | | | | | | | | | | |
-| `STEER_MODE_AUX` | Steering assist mode (aux byte) | 2 | 1 B | big | unsigned | raw | enum | 0 … 2 (2083) | low / candidate | a second byte that flips in step with the mode (comfort = 02, sport = 00, +R = 01); meaning unknown | session 7 (2026-09-15), per-segment analysis across a drive-mode sweep |
+| `STEER_MODE_AUX` | Steering assist mode (aux byte) | 2 | 1 B | big | unsigned | raw | enum | 0 … 2 (4286) | low / candidate | a second byte that flips in step with the mode (comfort = 02, sport = 00, +R = 01); meaning unknown | session 7 (2026-09-15), per-segment analysis across a drive-mode sweep |
 | ↳ enum | 0 = sport, 1 = plusR, 2 = comfort | | | | | | | | | | |
 
 ### 0x30 EPS electric power steering — `0x48BD` (56-byte data area)
@@ -394,9 +394,9 @@ EPS steering angle.
 
 | Signal | Name | Offset | Width | Endian | Sign | Decoding | Unit | Observed range (n) | Confidence | Evidence | First established by |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `STEER_ANGLE` | Steering wheel angle | 11 | 2 B | big | signed | raw × 0.1 | deg | -405.6 … 408.1 (5164) | medium | **0.1°/LSB is an assumption**: raw −4032 at full left lock, −26 at centre, and an eyeballed ~390° from centre to full lock gives 0.0974°/LSB. Full right lock was never captured and no instrument calibration was done | session 3 (2026-09-10); session 5 (2026-09-12) |
-| `VEHICLE_SPEED_COPY` | Vehicle speed (EPS copy) | 15 | 2 B | big | unsigned | raw × 0.01 | km/h | 0 … 113.99 (5164) | medium | EPS-side vehicle speed duplicate (16-bit ×0.01 in `48BD`, 8-bit integer in `4818`) | session 3 (2026-09-10); session 5 (2026-09-12) |
-| `YAW_RATE_8BIT` | Yaw rate (8-bit candidate) | 19 | 1 B | big | unsigned | raw × 1.13 − 144.6 | deg/s | -49.68 … 39.59 (5164) | low / candidate | r = 0.976 against a v·tanδ/L model | session 3 (2026-09-10); session 5 (2026-09-12) |
+| `STEER_ANGLE` | Steering wheel angle | 11 | 2 B | big | signed | raw × 0.1 | deg | -405.6 … 408.1 (5256) | medium | **0.1°/LSB is an assumption**: the archive contains both full locks (raw −4056 … +4081); the published 2.11 turns lock-to-lock implies 0.0934°/LSB (6.7% smaller). The scale stays at 0.1 until a physical angle measurement | session 3 (2026-09-10); session 5 (2026-09-12) |
+| `VEHICLE_SPEED_COPY` | Vehicle speed (EPS copy) | 15 | 2 B | big | unsigned | raw × 0.01 | km/h | 0 … 113.99 (5256) | medium | EPS-side vehicle speed duplicate (16-bit ×0.01 in `48BD`, 8-bit integer in `4818`) | session 3 (2026-09-10); session 5 (2026-09-12) |
+| `YAW_RATE_8BIT` | Yaw rate (8-bit candidate) | 19 | 1 B | big | unsigned | raw − 128 | deg/s | -44 … 35 (5256) | low / candidate | ratio of about 249 to `48C0` in the same module; rescaled to 1.0 °/s/LSB together with `48C0` (the old 1.13 inherited 0.0045) | session 3 (2026-09-10); session 5 (2026-09-12) |
 
 ### 0x30 EPS electric power steering — `0x48C0` (56-byte data area)
 
@@ -404,7 +404,7 @@ EPS yaw rate.
 
 | Signal | Name | Offset | Width | Endian | Sign | Decoding | Unit | Observed range (n) | Confidence | Evidence | First established by |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `YAW_RATE` | Yaw rate | 0 | 2 B | big | signed | raw × 0.0045 | deg/s | -46.404 … 42.183 (2798) | medium | r = 0.982 against a model built on a 2.735 m wheelbase and a steering ratio of 13; positive is a right turn. **The scale is not calibrated**: a wheel-speed geometry method gives a pooled point estimate of 0.004214 with an error-budget interval of [0.00239, 0.00604], and the 43.4% systematic error dwarfs the 14.7% gap between the two candidate scales | session 3 (2026-09-10), model fit; error budget from the full-archive re-check (2026-09-20) |
+| `YAW_RATE` | Yaw rate | 0 | 2 B | big | signed | raw × 0.004 | deg/s | -41.248 … 37.496 (2890) | medium | positive is a right turn. Changed from 0.0045 to 0.004 on 2026-09-28: the low-speed steady rear-wheel differential over the published rear track gives a median of 0.003927 (n=30, one trip), and the κ² term of the front/rear axle speed ratio over the published wheelbase (independent of the track) gives 0.0039 / 0.00405 (two trips). Both share the wheel-speed scale and tyre circumference as a common error source; 0.0045 falls outside their intervals (after dropping one trip whose interval is too wide), while 0.004 and 0.003924 remain indistinguishable | session 3 (2026-09-10), model fit; error budget from the full-archive re-check (2026-09-20); offline body-dynamics calibration across the archive (2026-09-28) |
 
 ### 0x30 EPS electric power steering — `0x48C4` (56-byte data area)
 
@@ -412,12 +412,14 @@ EPS four-wheel speeds at 0.01 km/h. The wheel order is inferred from «outer whe
 
 | Signal | Name | Offset | Width | Endian | Sign | Decoding | Unit | Observed range (n) | Confidence | Evidence | First established by |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `STEER_ANGLE_COPY` | Steering wheel angle (copy) | 8 | 2 B | big | signed | raw × 0.1 | deg | -405.4 … 408 (3193) | medium | r = 0.96 against the steering angle in `48BD` | session 3 (2026-09-10) |
-| `LATERAL_G_CANDIDATE` | Lateral acceleration (EPS candidate) | 18 | 1 B | big | signed | raw × 0.005 | g? | -0.35 … 0.435 (3193) | low / candidate | r = 0.85 against a v²δ/L model; hard to separate from yaw rate over the speed range available | session 3 (2026-09-10); full-archive re-check (2026-09-20) |
-| `WHEEL_SPEED_FL` | Wheel speed front left | 23 | 2 B | big | unsigned | raw × 0.01 | km/h | 0 … 115.23 (3193) | high | r = 0.997 against ECM vehicle speed; the wheel order comes from outer wheels running faster in a turn and front wheels faster under acceleration | session 3 (2026-09-10) |
-| `WHEEL_SPEED_FR` | Wheel speed front right | 25 | 2 B | big | unsigned | raw × 0.01 | km/h | 0 … 115.18 (3193) | high | same as above | session 3 (2026-09-10) |
-| `WHEEL_SPEED_RL` | Wheel speed rear left | 27 | 2 B | big | unsigned | raw × 0.01 | km/h | 0 … 114.75 (3193) | high | same as above | session 3 (2026-09-10) |
-| `WHEEL_SPEED_RR` | Wheel speed rear right | 29 | 2 B | big | unsigned | raw × 0.01 | km/h | 0 … 114.55 (3193) | high | same as above | session 3 (2026-09-10) |
+| `STEER_ANGLE_COPY` | Steering wheel angle (copy) | 8 | 2 B | big | signed | raw × 0.1 | deg | -405.4 … 408 (3285) | medium | r = 0.96 against the steering angle in `48BD` | session 3 (2026-09-10) |
+| `YAW_RATE_COPY` | Yaw rate (EPS copy) | 15 | 2 B | big | signed | raw × 0.25 | deg/s | -44.5 … 36.75 (3285) | low / candidate | a yaw-rate copy inside `48C4`, ratio about 62.5 to `48C0` in the same module; its scale is inherited from `48C0` | offline body-dynamics calibration across the archive (2026-09-28) |
+| `LATERAL_G_CANDIDATE` | Lateral acceleration (EPS candidate) | 17 | 2 B | big | signed | raw × 0.005 | g? | -0.35 … 0.435 (3285) | medium | `[17]` is the sign extension of `[18]`, so it is read as a 16-bit `[17:19]`; the ratio to `4001[51]` is about 4.0–4.8 (forward/reverse regression [3.74, 6.05] after a lag scan), i.e. roughly ±24% relative scale uncertainty; no external g reference | session 3 (2026-09-10); full-archive re-check (2026-09-20); offline body-dynamics calibration across the archive (2026-09-28) |
+| `LONGITUDINAL_G_EPS_CANDIDATE` | Longitudinal acceleration (EPS candidate) | 19 | 2 B | big | signed | raw × -0.0045 | g | -0.378 … 0.36 (3285) | low / candidate | raw positive means deceleration; r = −0.89 against `4001[52]`, and regressions against wheel-speed-derived acceleration give −0.0037…−0.0048 g/LSB; the negative scale makes the decoded value positive for acceleration | offline body-dynamics calibration across the archive (2026-09-28) |
+| `WHEEL_SPEED_FL` | Wheel speed front left | 23 | 2 B | big | unsigned | raw × 0.01 | km/h | 0 … 115.23 (3285) | high | r = 0.997 against ECM vehicle speed; the wheel order comes from outer wheels running faster in a turn and front wheels faster under acceleration | session 3 (2026-09-10) |
+| `WHEEL_SPEED_FR` | Wheel speed front right | 25 | 2 B | big | unsigned | raw × 0.01 | km/h | 0 … 115.18 (3285) | high | same as above | session 3 (2026-09-10) |
+| `WHEEL_SPEED_RL` | Wheel speed rear left | 27 | 2 B | big | unsigned | raw × 0.01 | km/h | 0 … 114.75 (3285) | high | same as above | session 3 (2026-09-10) |
+| `WHEEL_SPEED_RR` | Wheel speed rear right | 29 | 2 B | big | unsigned | raw × 0.01 | km/h | 0 … 114.55 (3285) | high | same as above | session 3 (2026-09-10) |
 
 ### 0x60 Instrument cluster — `0x7020` (54-byte data area)
 
@@ -425,8 +427,8 @@ Cluster seatbelt and electric parking brake indicators.
 
 | Signal | Name | Offset | Width | Endian | Sign | Decoding | Unit | Observed range (n) | Confidence | Evidence | First established by |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `SEATBELT_WARN_CLUSTER` | Seatbelt warning (cluster) | 9 | 1 bit (mask 0x10) | big | unsigned | raw & 0x10 | bool | 0 … 16 (480) | medium | **inverted polarity** relative to the VSA bit (here 1 means not fastened) | session 8 (2026-09-16), stationary segment 5; startup-sequence review (2026-09-18) |
-| `EPB_INDICATOR_CLUSTER` | Electric parking brake indicator (cluster) | 11 | 1 bit (mask 0x20) | big | unsigned | raw & 0x20 | bool | 0 … 32 (480) | medium | set when the electric parking brake is applied; **single observation** | session 8 (2026-09-16), stationary segment, single observation |
+| `SEATBELT_WARN_CLUSTER` | Seatbelt warning (cluster) | 9 | 1 bit (mask 0x10) | big | unsigned | raw & 0x10 | bool | 0 … 16 (572) | medium | **inverted polarity** relative to the VSA bit (here 1 means not fastened) | session 8 (2026-09-16), stationary segment 5; startup-sequence review (2026-09-18) |
+| `EPB_INDICATOR_CLUSTER` | Electric parking brake indicator (cluster) | 11 | 1 bit (mask 0x20) | big | unsigned | raw & 0x20 | bool | 0 … 32 (572) | medium | set when the electric parking brake is applied; **single observation** | session 8 (2026-09-16), stationary segment, single observation |
 
 ### 0x60 Instrument cluster — `0x7021` (54-byte data area)
 
@@ -434,7 +436,7 @@ Cluster Brake Hold indicator.
 
 | Signal | Name | Offset | Width | Endian | Sign | Decoding | Unit | Observed range (n) | Confidence | Evidence | First established by |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `BRAKE_HOLD_ACTIVE_CLUSTER` | Brake Hold enabled (cluster) | 7 | 1 bit (mask 0x80) | big | unsigned | raw & 0x80 | bool | 0 … 128 (480) | medium | synchronous with VSA `4007[21] bit1` (set at +77 s, cleared at +87 s) | session 7 (2026-09-15), stationary segment |
+| `BRAKE_HOLD_ACTIVE_CLUSTER` | Brake Hold enabled (cluster) | 7 | 1 bit (mask 0x80) | big | unsigned | raw & 0x80 | bool | 0 … 128 (785) | medium | synchronous with VSA `4007[21] bit1` (set at +77 s, cleared at +87 s) | session 7 (2026-09-15), stationary segment |
 
 ### 0x60 Instrument cluster — `0x7022` (54-byte data area)
 
@@ -442,7 +444,7 @@ Cluster odometer.
 
 | Signal | Name | Offset | Width | Endian | Sign | Decoding | Unit | Observed range (n) | Confidence | Evidence | First established by |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `ODOMETER_CLUSTER` | Odometer (cluster) | 6 | 3 B | big | unsigned | raw | km | withheld (1394) | high | same value and same unit (km) as the ECM odometer — **the public archive's «miles» is wrong** | session 2 (2026-09-10), checked against the cluster odometer |
+| `ODOMETER_CLUSTER` | Odometer (cluster) | 6 | 3 B | big | unsigned | raw | km | withheld (1496) | high | same value and same unit (km) as the ECM odometer — **the public archive's «miles» is wrong** | session 2 (2026-09-10), checked against the cluster odometer |
 
 ### 0x60 Instrument cluster — `0x7028` (54-byte data area)
 
@@ -450,7 +452,7 @@ Cluster ambient temperature.
 
 | Signal | Name | Offset | Width | Endian | Sign | Decoding | Unit | Observed range (n) | Confidence | Evidence | First established by |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `AMBIENT_TEMP` | Ambient temperature | 17 | 1 B | big | unsigned | raw | degC | 26 … 34 (2059) | high | raw = 28 corresponds to 28 °C on the in-car display, with **no −40 offset** (the public archive's −40 does not hold on this car); `[15]` carries the same value. Negative-temperature encoding could never be verified at the capture location | session 2 (2026-09-10), against the in-car ambient temperature display |
+| `AMBIENT_TEMP` | Ambient temperature | 17 | 1 B | big | unsigned | raw | degC | 26 … 34 (2161) | high | raw = 28 corresponds to 28 °C on the in-car display, with **no −40 offset** (the public archive's −40 does not hold on this car); `[15]` carries the same value. Negative-temperature encoding could never be verified at the capture location | session 2 (2026-09-10), against the in-car ambient temperature display |
 
 ### 0x60 Instrument cluster — `0x7029` (54-byte data area)
 
@@ -458,7 +460,7 @@ Cluster fuel level.
 
 | Signal | Name | Offset | Width | Endian | Sign | Decoding | Unit | Observed range (n) | Confidence | Evidence | First established by |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `FUEL_LEVEL` | Fuel level | 12 | 2 B | big | unsigned | raw × 0.01 | L | 16.46 … 43.88 (1393) | high | a smooth 16.57→16.46 L over ten minutes of idling (≈0.66 L/h) | session 2 (2026-09-10) |
+| `FUEL_LEVEL` | Fuel level | 12 | 2 B | big | unsigned | raw × 0.01 | L | 8.66 … 44.23 (1495) | high | a smooth 16.57→16.46 L over ten minutes of idling (≈0.66 L/h) | session 2 (2026-09-10) |
 
 Where the same signal name appears under two DIDs (`VEHICLE_SPEED_COPY`, `STEER_ANGLE_COPY`), they are two independent fields at different positions; read the decoding and the confidence from the row you are looking at.
 
@@ -481,7 +483,7 @@ Across the 25 mapped DIDs there are still **206 unmapped bytes that change / 1,1
 | `10:2610` | [16] | changes within a capture, low nibble only (mask 0x0F); 5 distinct values, r ≈ −0.77 against coolant temperature |
 | `10:2610` | [37] | strongly anti-correlated with `ECT2` |
 | `10:2610` | [41] | anti-correlated with `IAT2` |
-| `10:2610` | [46:48] | drifts slowly over 5272–5704 (mapped as a low-confidence high-resolution voltage candidate) |
+| `10:2610` | [46:48] | Slowly varies over 5272–5704; mapped as a high-resolution voltage candidate. Shared RAM and 278/278 same-packet quantization checks support medium confidence as of 2026-10-08; independent voltmeter calibration is unverified. |
 | `10:2610` | [49] | low byte of `MAP_MMHG` |
 | `10:2610` | [50] | 0 / 1 flag |
 | `10:2610` | [51] | 0–240 in steps of about 7.5 |
@@ -521,7 +523,7 @@ Across the 25 mapped DIDs there are still **206 unmapped bytes that change / 1,1
 
 | Item | The competing readings | Why they cannot be separated |
 |---|---|---|
-| Yaw-rate scale | 0.0045 (steering-angle / wheelbase kinematic model) vs 0.003924 (rear-wheel differential geometry) | these are **not two independent calibrations**: the same geometric method yields 0.00347–0.00488 depending on the speed window and the track width used. The systematic error budget totals 43.4% (left/right asymmetry 34.1%, speed window 21.5%, trip-to-trip 16.0%), far larger than the 14.7% between the two candidates. Settling it needs an external yaw-rate reference (≥10 Hz, <3% error) or a measured track width and rolling circumference |
+| Yaw-rate scale | 0.004 vs 1/256 (0.003906) vs 0.003924; 0.0045 is ruled out | since 2026-09-28 the map uses 0.004: the low-speed steady rear-wheel differential and the κ² term of the front/rear axle speed ratio both give 0.0039–0.0041, which excludes 0.0045 (after dropping one trip whose interval is too wide). The two methods share the wheel-speed scale and tyre circumference as a common error source, the low-speed steady samples come from a single trip (n=30), and the remaining three candidates differ by less than 3%, so they cannot be separated. Settling it needs an external yaw-rate reference or a measured track width and rolling circumference |
 | The gating of `2610[39]` | absolute vs gauge pressure as the input; a single threshold vs hysteresis vs a speed/gear-dependent split | a single pressure threshold and a Schmitt hysteresis are both refuted (within one trip the state is entered at 7.1 kPa gauge and absent at 26.3 kPa, which would require the entry threshold to be below the exit threshold). Absolute vs gauge is not separable in this archive because barometric pressure only ever read 100 or 101. A speed/gear split improves held-out log-loss by 17–18%, short of the 20% bar but with a confidence interval crossing it → **undecided, not «no effect»** |
 | The width of `2611[53:57]` | signed 8-bit vs signed 16-bit little-endian | over the observed range of −53…0 the two are identical, with zero counter-examples. One sample with magnitude above 127 would settle it |
 | The width of `268F[16:18]` / `[31:33]` | 8-bit vs 16-bit sign-extended | they are sign-extension pairs, so both readings give the same value over the observed range |
@@ -537,16 +539,16 @@ This section matters as much as the table above it. Every line below was written
 |---|---|---|---|
 | Service 22 requests go to `7E0` and responses come from `7E8` | this car uses 29-bit `18DA10F1` / `18DAF110`; Mode 01 on 11-bit `7DF` / `7E0` draws no response at all | a generic OBD-II prior applied to Honda's 29-bit diagnostic addressing | first session, passive capture |
 | `22 2610` does not answer, so a stock ECU must need a `10 03` + `27` handshake | the tester's flow control was 120 ms late and the ECU abandoned the transfer; the default session needs no handshake | a rate limiter queued the flow control frame, and the resulting symptom was read as a protocol requirement | session 2, self-corrected |
-| Oil temperature is not in the ECU / the head unit gets it elsewhere | it is in ECM `268F[15]` | only `2610` and `2611` had been searched before the negative conclusion was drawn | session 2 |
+| Searching only 2610/2611 proves there is no ECU oil temperature, or 268F[15] is already proven to be LogR | Both overstatements are withdrawn: 268F[15] is an observed FL5 candidate with a confirmed dynamic source; LogR correspondence is unverified. | Equating absence from a limited search with nonexistence, or treating candidate observations as display-source binding. | session 2; corrected by the 2026-10-08 ROM review |
 | 21 coefficients derived from the tuning tool (pedal 0.00457, cams, boost, air charge, an 8-bit wastegate, actual and commanded injection pressure swapped, torque in N·m …) | all replaced by exact constants (0.005; 53 − 0.5·raw; raw/76 absolute; raw×3/128; a 16-bit wastegate; torque as 100·raw/255 %) | regressing against an already rounded and truncated CSV export, which also mixed inHg and psi | re-derivation from the unrounded datalog stream |
 | `2662[28] − 40` is a coolant temperature duplicate | it stayed at 73 while coolant went 73→80 °C, so it was first downgraded to unknown and later identified as VTC duty (medium confidence) | a coincidence inside a short window read as a correspondence | self-review plus cross-check against public sources |
 | `2610[14]` is MAP in integer kPa | not integer kPa and not linear over the full range; use `[9:11]` | a single linear fit over a narrow range | review plus session 5 |
-| `ECT2` is «coolant temperature 2» | a location with far more thermal inertia; confidence dropped to low | a handful of samples, plus the continuous trace being misread as a frozen start-up snapshot | session 5 |
+| Slow response alone excludes ECT2 as coolant temperature and keeps confidence low | That exclusion is withdrawn: HDS, FL5 circuitry and this ROM support a radiator-side coolant candidate at medium confidence; independent probe calibration is unverified. | Treating a different thermal response as disproof of physical identity, and previously mistaking a changing trace for a frozen snapshot. | historical session 5 judgment; corrected 2026-10-08 |
 | Air charge can be used as OBD calculated load | air charge is relative and reaches 218%; the semantics differ, and calculated load stays absent | conflating two different quantities because the units looked alike | external review |
 | «The sum of ten transaction medians ≈ the cycle time, so the serial model holds» | the method is wrong (medians do not add); the correct proof is a per-round identity with zero residual | a statistical error | independent review |
 | VSA has a fixed 80 ms consecutive-frame gap, and a 10/10/5 Hz schedule was built on it | 80 ms is the first-frame-to-last-frame span; real CF gaps are ≈10 ms (VSA), ≈2 ms (ECM), ≈8 ms (EPS). That schedule would need 1700 ms of bus time per second from one module | reading a total duration as an inter-frame gap, and never checking the schedule against an ECU time budget | independent review |
 | «Everything on the in-car performance display except longitudinal G and clutch is readable» | the steering scale is an assumption and the yaw rate is a model fit; neither is calibrated | over-generalisation | external review |
-| With the key on and the engine not running, oil temperature reads 32 while the display shows dashes, so the product must reproduce that threshold | that key-on capture never sampled `268F` at all, and by the time 32 was read the engine was turning at 1514 rpm | treating a verbal observation from a minute earlier and a current reading as the same instant | session 5 review |
+| A startup observation of 32 degrees and display dashes establishes a product display threshold | The threshold remains unverified: the zero-RPM log lacks 268F and the existing marks do not close a same-second 268F/RPM comparison. The driver observation is retained. | Inferring a precise trigger threshold without synchronized evidence. | session 5 review; wording corrected 2026-10-08 |
 | «The low-pressure warning threshold must be below 58 kPa» and «above 4500 rpm the regulator is limiting pressure» | 58 is merely the smallest value ever observed, and above 4500 rpm there are only 29 samples | an inference stated as a fact | session 5 review |
 | 0.0967 °/LSB for steering, with the full two-sided range reproduced | the centre offset was not subtracted; it should be 0.0974, and that session never reached full right lock | a missing zero offset, plus a negative claim beyond the evidence | session 5 review |
 | `2611[55:56]` is a strong clutch candidate | it is not the clutch, and it is not «a one-off adaptation right after start-up» either — one capture holds at least two non-zero stretches, the second lasting 80.3 s over 893 samples | first correlation mistaken for identification, then a «one-off» conclusion drawn from looking only at the start of the file | session 5 self-correction; full-archive re-check (2026-09-20) |
@@ -643,8 +645,8 @@ If you use this data set in published work, please cite it via [`CITATION.cff`](
 
 | Item | Value |
 |---|---|
-| `dataset_version` | `1.0.1` |
-| `signals_csv_sha256` | `efee5056ec7338b4489e59071a4e3bd78fba9d0d9e7d84313eb593c031494041` |
+| `dataset_version` | `1.1.0` |
+| `signals_csv_sha256` | `0b10cd73b3655187ce1e1a08cd34cc164b9d5db463107a84e4a5784dd8ab29d5` |
 
 `dataset_version` is the semantic version of this data set; `signals_csv_sha256` is the content hash of `data/signals.csv`, so you can check the copy in your hands against it.
 
@@ -654,5 +656,6 @@ Hashes are computed after normalising CRLF to LF, so they are identical on Windo
 
 | Version | Contents |
 |---|---|
+| 1.1.0 (2026-10-18) | Data release. Two EPS yaw/acceleration signals were added (`YAW_RATE_COPY`, `LONGITUDINAL_G_EPS_CANDIDATE`), and `LATERAL_G_CANDIDATE` is now read as the 16-bit pair at offset 17. Three candidates were promoted from low to medium after the 2026-10-08 static review of the pre-unlock image: `ECT2` (now described as a radiator-side coolant candidate), `BATTERY_V_HIRES_CANDIDATE` and `LATERAL_G_VSA_CANDIDATE`. Observed ranges and sample counts are refreshed from the current archive. No decoding changed apart from the added signals. The oil-temperature computation rules stay private and are not part of this data set. |
 | 1.0.1 (2026-09-21) | Text-only correction release, no decoding changes: the Chinese descriptions of eight signals were aligned with the English evidence. `AC_REQUEST`, `BOOST_LOAD_STATE` and `YAW_RATE` now carry the conclusions of the 2026-09-20 full-archive re-check. `BRAKE_SWITCH_MIRROR` no longer reads «a mirror of the `4004` brake switch with 97.05% agreement» but «not a clean mirror: while bit3 is set, bit2 does not fall back when the pedal is released», and the agreement rate is now the 97.03% (2745/2829) measured at a 1.0 s tolerance. `WASTEGATE` mentions the change to signed decoding made on 2026-09-19. `STEER_MODE` was verified in three sessions, not two. `LATERAL_G_VSA_CANDIDATE` no longer claims «a ratio close to 1»: there are two independent lateral channels whose implied yaw scales differ by 35%. `BOOST_PRESSURE` has an observed ceiling of 215 kPa, not 202. |
 | 1.0.0 (2026-09-21) | First public release. Covers every conclusion filed up to 2026-09-19, including the ten offline analyses completed on 2026-09-20. `WASTEGATE` is now signed. Seven claims were overturned and are recorded in the refuted section: the single threshold and hysteresis for `2610[39]`, «`268F[39]` is a high-load flag», the «four identical switches» in `268F`, all four readings of `10:3004`, «`48BD[21]` is not a mode byte», the strict-mirror reading of `4007[9] bit2`, and the general ECM header bitmap. Observed ranges are withheld for the two odometer signals: an exact odometer reading would identify one specific car. |

@@ -4,6 +4,10 @@ This file tracks the data set version. The version is semantic: the major number
 changes when a decoding changes in a way that breaks existing consumers, the minor
 number when signals are added, the patch number for corrections to text or evidence.
 
+## 1.1.0 (2026-10-18)
+
+Data release. Two EPS yaw/acceleration signals were added (`YAW_RATE_COPY`, `LONGITUDINAL_G_EPS_CANDIDATE`), and `LATERAL_G_CANDIDATE` is now read as the 16-bit pair at offset 17. Three candidates were promoted from low to medium after the 2026-10-08 static review of the pre-unlock image: `ECT2` (now described as a radiator-side coolant candidate), `BATTERY_V_HIRES_CANDIDATE` and `LATERAL_G_VSA_CANDIDATE`. Observed ranges and sample counts are refreshed from the current archive. No decoding changed apart from the added signals. The oil-temperature computation rules stay private and are not part of this data set.
+
 ## 1.0.1 (2026-09-21)
 
 Text-only correction release, no decoding changes: the Chinese descriptions of eight signals were aligned with the English evidence. `AC_REQUEST`, `BOOST_LOAD_STATE` and `YAW_RATE` now carry the conclusions of the 2026-09-20 full-archive re-check. `BRAKE_SWITCH_MIRROR` no longer reads «a mirror of the `4004` brake switch with 97.05% agreement» but «not a clean mirror: while bit3 is set, bit2 does not fall back when the pedal is released», and the agreement rate is now the 97.03% (2745/2829) measured at a 1.0 s tolerance. `WASTEGATE` mentions the change to signed decoding made on 2026-09-19. `STEER_MODE` was verified in three sessions, not two. `LATERAL_G_VSA_CANDIDATE` no longer claims «a ratio close to 1»: there are two independent lateral channels whose implied yaw scales differ by 35%. `BOOST_PRESSURE` has an observed ceiling of 215 kPa, not 202.

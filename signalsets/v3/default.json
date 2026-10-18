@@ -178,6 +178,20 @@
           "description": "confidence=high; r = 0.99996 against the relation AFM.c = 30000·AFM/RPM"
         },
         {
+          "id": "FL5_ECT2",
+          "name": "Radiator-side coolant temperature (candidate)",
+          "fmt": {
+            "bix": 304,
+            "len": 8,
+            "min": -40,
+            "max": 215,
+            "add": -40,
+            "unit": "celsius"
+          },
+          "path": "Engine",
+          "description": "confidence=medium; The H020 ROM reads s16[D000023E] with the same temperature conversion as ECT/IAT. Archived HDS ECT2A and FL5 ECT2 circuitry support a radiator-side coolant candidate: medium confidence. Independent probe calibration and current-software applicability remain unverified."
+        },
+        {
           "id": "FL5_BOOST_LOAD_STATE",
           "name": "Boost load state",
           "fmt": {
@@ -251,6 +265,19 @@
           },
           "path": "Fluids",
           "description": "confidence=high; 2,021 samples at zero engine speed read exactly 0 while the same responses carry BARO = 101 and MAP = 100.3, which rules out a dead sensor; idle readings of 241 / 251 against an in-car 252 support a gauge-pressure reading"
+        },
+        {
+          "id": "FL5_BATTERY_V_HIRES_CANDIDATE",
+          "name": "Battery voltage (high resolution candidate)",
+          "fmt": {
+            "bix": 368,
+            "len": 16,
+            "max": 163.8375,
+            "div": 400,
+            "unit": "volts"
+          },
+          "path": "Electrical",
+          "description": "confidence=medium; The H020 ROM shares s16[D0000200] with 2610[22]: high-resolution encoding 8*x, low-resolution floor(6554*x/32768). All 278 same-packet samples differ by 0..0.08 V after decoding, within quantization buckets. Medium confidence; independent voltmeter calibration is unverified."
         },
         {
           "id": "FL5_MAP_MMHG",
@@ -717,7 +744,7 @@
             "unit": "seconds"
           },
           "path": "Engine",
-          "description": "confidence=medium; taken from the public signal set; not independently verified here"
+          "description": "confidence=medium; The H020 ROM shares index 0x1A, u32[D0003884], and conversion with 2665[8:10]; output is clamped to unsigned 16-bit range. Same source confirmed; medium confidence retained. Seconds timebase, reset conditions and runtime gating remain unverified; do not assume 16-bit rollover."
         }
       ]
     },
@@ -790,7 +817,7 @@
             "unit": "seconds"
           },
           "path": "Engine",
-          "description": "confidence=medium; equal sample by sample to the run time in `2660` (250/278; the rest differ by 1 s across a second boundary)"
+          "description": "confidence=medium; The H020 ROM confirms the same index 0x1A, u32[D0003884], conversion and unsigned 16-bit clamping as 2660[46:48]. Of 278 historical asynchronous samples, 250 match and the rest differ by 1. Medium confidence; timebase and reset conditions remain unverified."
         }
       ]
     },
@@ -804,7 +831,7 @@
       "signals": [
         {
           "id": "FL5_OIL_TEMP_MODEL",
-          "name": "Engine oil temperature (ECU model)",
+          "name": "Engine oil temperature (model candidate)",
           "fmt": {
             "bix": 120,
             "len": 8,
@@ -814,7 +841,7 @@
             "unit": "celsius"
           },
           "path": "Fluids",
-          "description": "confidence=high; an ECU model value. Matches the cluster point for point over 54→67 °C; the in-car display showed 54 °C where the bus read 55 °C; warm-up is continuous over 32→81 °C. No precedent in any public source; the model algorithm, the sensor arrangement and the start-up display threshold are all unverified"
+          "description": "confidence=high; An observed OBD oil-temperature candidate on this FL5. Static review of the pre-unlock image supports a computed source for byte 15, but the computation rules are private research and are not published; physical oil-temperature identity and LogR correspondence remain unverified. The driver observed low readings when cold, convergence, then higher readings; screen-reading delay does not explain away that observation. Historical marks are not continuous synchronized validation; FK8 material is analogy only."
         }
       ]
     },
@@ -826,6 +853,21 @@
       },
       "freq": 1,
       "signals": [
+        {
+          "id": "FL5_LATERAL_G_VSA_CANDIDATE",
+          "name": "Lateral acceleration (VSA candidate)",
+          "fmt": {
+            "bix": 408,
+            "len": 8,
+            "min": -2.5,
+            "max": 2.6,
+            "div": 50,
+            "add": -2.5,
+            "unit": "gravity"
+          },
+          "path": "Movement",
+          "description": "confidence=medium; best r = 0.873 against a speed × yaw-rate model. It is an independent lateral channel, not a sample-by-sample mirror of the EPS one; their ratio is about 4.0–4.8, so the earlier «35% apart, at least one scale is wrong» is no longer supported but not ruled out; no external g reference"
+        },
         {
           "id": "FL5_LONGITUDINAL_G",
           "name": "Longitudinal acceleration",
@@ -1179,7 +1221,7 @@
             "unit": "degrees"
           },
           "path": "Control",
-          "description": "confidence=medium; 0.1°/LSB is an assumption: raw −4032 at full left lock, −26 at centre, and an eyeballed ~390° from centre to full lock gives 0.0974°/LSB. Full right lock was never captured and no instrument calibration was done"
+          "description": "confidence=medium; 0.1°/LSB is an assumption: the archive contains both full locks (raw −4056 … +4081); the published 2.11 turns lock-to-lock implies 0.0934°/LSB (6.7% smaller). The scale stays at 0.1 until a physical angle measurement"
         },
         {
           "id": "FL5_VEHICLE_SPEED_COPY_48BD",
@@ -1211,14 +1253,13 @@
             "bix": 0,
             "len": 16,
             "sign": true,
-            "min": -147.456,
-            "max": 147.4515,
-            "mul": 9,
-            "div": 2000,
+            "min": -131.072,
+            "max": 131.068,
+            "div": 250,
             "unit": "unknown"
           },
           "path": "Movement",
-          "description": "confidence=medium; unit=deg/s (OBDb 无对应枚举); r = 0.982 against a model built on a 2.735 m wheelbase and a steering ratio of 13; positive is a right turn. The scale is not calibrated: a wheel-speed geometry method gives a pooled point estimate of 0.004214 with an error-budget interval of [0.00239, 0.00604], and the 43.4% systematic error dwarfs the 14.7% gap between the two candidate scales"
+          "description": "confidence=medium; unit=deg/s (OBDb 无对应枚举); positive is a right turn. Changed from 0.0045 to 0.004 on 2026-09-28: the low-speed steady rear-wheel differential over the published rear track gives a median of 0.003927 (n=30, one trip), and the κ² term of the front/rear axle speed ratio over the published wheelbase (independent of the track) gives 0.0039 / 0.00405 (two trips). Both share the wheel-speed scale and tyre circumference as a common error source; 0.0045 falls outside their intervals (after dropping one trip whose interval is too wide), while 0.004 and 0.003924 remain indistinguishable"
         }
       ]
     },
@@ -1244,6 +1285,21 @@
           },
           "path": "Control",
           "description": "confidence=medium; r = 0.96 against the steering angle in `48BD`"
+        },
+        {
+          "id": "FL5_LATERAL_G_CANDIDATE",
+          "name": "Lateral acceleration (EPS candidate)",
+          "fmt": {
+            "bix": 136,
+            "len": 16,
+            "sign": true,
+            "min": -163.84,
+            "max": 163.835,
+            "div": 200,
+            "unit": "gravity"
+          },
+          "path": "Movement",
+          "description": "confidence=medium; `[17]` is the sign extension of `[18]`, so it is read as a 16-bit `[17:19]`; the ratio to `4001[51]` is about 4.0–4.8 (forward/reverse regression [3.74, 6.05] after a lag scan), i.e. roughly ±24% relative scale uncertainty; no external g reference"
         },
         {
           "id": "FL5_WHEEL_SPEED_FL",
